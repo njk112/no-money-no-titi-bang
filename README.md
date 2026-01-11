@@ -89,3 +89,48 @@ logic should live in the backend and frontend should only display data. In the m
 As an additional feature, we want to have a page of suggested items to purchase based on PnL - this should work in a way that a user enters the desired amount of money they want to spend and we preselect top 6 items to buy.
 
 For repo structure we have a backend folder Adonis JS and Frontend using Next JS. For database use SQLLite and for UI components use Shadcn, they should be preinstalled. If you want to add additional packages as long as you have a good reason feel free to do so.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm or pnpm
+
+### Running the Application
+
+#### Backend (AdonisJS)
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+The backend will start on `http://localhost:3333`
+
+#### Frontend (Next.js)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will start on `http://localhost:3000`
+
+### Available Scripts
+
+**Backend:**
+- `npm run dev` - Start development server with HMR
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run test` - Run tests
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - TypeScript type checking
+
+**Frontend:**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint

@@ -16,7 +16,17 @@ export default class ItemsController {
     const order = request.input('order', 'desc')
 
     const query = Item.query()
-      .select('items.*')
+      .select(
+        'items.id',
+        'items.name',
+        'items.icon_filename',
+        'items.buy_limit',
+        'items.members',
+        'items.high_alch',
+        'items.low_alch',
+        'items.created_at',
+        'items.updated_at'
+      )
       .select('item_prices.high_price')
       .select('item_prices.low_price')
       .select('item_prices.high_time')
@@ -140,28 +150,22 @@ export default class ItemsController {
   }
 
   async show({ params, response }: HttpContext) {
-    const item = await Item.query()
-      .select('items.*')
-      .select('item_prices.high_price')
-      .select('item_prices.low_price')
-      .select('item_prices.high_time')
-      .select('item_prices.low_time')
-      .select('item_prices.synced_at')
-      .leftJoin('item_prices', (join) => {
-        join.on('items.id', '=', 'item_prices.item_id')
-      })
-      .whereRaw(
-        'item_prices.synced_at IS NULL OR item_prices.synced_at = (SELECT MAX(ip2.synced_at) FROM item_prices ip2 WHERE ip2.item_id = items.id)'
-      )
-      .where('items.id', params.id)
-      .first()
+    // Fetch item without join to avoid id collision
+    const item = await Item.find(params.id)
 
     if (!item) {
       return response.notFound({ message: 'Item not found' })
     }
 
-    const highPrice = item.$extras.high_price
-    const lowPrice = item.$extras.low_price
+    // Fetch latest price separately
+    const latestPrice = await item
+      .related('prices')
+      .query()
+      .orderBy('synced_at', 'desc')
+      .first()
+
+    const highPrice = latestPrice?.highPrice ?? null
+    const lowPrice = latestPrice?.lowPrice ?? null
     const buyLimit = item.buyLimit
 
     const profitMargin =
@@ -177,10 +181,10 @@ export default class ItemsController {
       members: item.members,
       high_alch: item.highAlch,
       low_alch: item.lowAlch,
-      high_price: highPrice ?? null,
-      low_price: lowPrice ?? null,
-      high_time: item.$extras.high_time ?? null,
-      low_time: item.$extras.low_time ?? null,
+      high_price: highPrice,
+      low_price: lowPrice,
+      high_time: latestPrice?.highTime?.toISO() ?? null,
+      low_time: latestPrice?.lowTime?.toISO() ?? null,
       profit_margin: profitMargin,
       max_profit: maxProfit,
       ge_tracker_url: item.geTrackerUrl,

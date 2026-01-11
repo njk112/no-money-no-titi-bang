@@ -39,7 +39,9 @@ export default class Item extends BaseModel {
     if (!this.iconFilename) {
       return null
     }
-    return `https://oldschool.runescape.wiki/images/${this.iconFilename}`
+    // Wiki URLs use underscores instead of spaces
+    const encodedFilename = this.iconFilename.replace(/ /g, '_')
+    return `https://oldschool.runescape.wiki/images/${encodedFilename}`
   }
 
   @computed()
