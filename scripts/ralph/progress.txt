@@ -141,3 +141,44 @@ Feature: OSRS GE Trading Dashboard
   - Shadcn Collapsible for mobile filter toggle
   - toLocaleString() for number formatting with commas
 ---
+
+## 2026-01-11 - US-039 through US-046
+- What was implemented: Modal components and item detail modal
+- Files changed:
+  - frontend/components/modal.tsx (created)
+  - frontend/components/item-detail-modal.tsx (created)
+  - frontend/hooks/use-item.ts (created)
+- **Learnings:**
+  - Use Dialog component from shadcn for modals
+  - Conditional fetch: only fetch when itemId is not null
+  - Format relative time with Date arithmetic
+---
+
+## 2026-01-11 - US-047 through US-052
+- What was implemented: Suggestions page with budget input and cards
+- Files changed:
+  - frontend/app/suggestions/page.tsx (created)
+  - frontend/components/budget-input.tsx (created)
+  - frontend/components/suggestion-card.tsx (created)
+  - frontend/components/suggestions-grid.tsx (created)
+  - frontend/hooks/use-suggestions.ts (created)
+- **Learnings:**
+  - Use inputMode="numeric" for better mobile keyboard
+  - Manual fetch trigger pattern (no auto-fetch on mount)
+  - Grid responsive: cols-1 md:cols-2 lg:cols-3
+---
+
+## 2026-01-11 - US-053
+- What was implemented: Scheduled sync with node-cron
+- Files changed:
+  - backend/start/scheduler.ts (created)
+  - backend/adonisrc.ts (modified - added scheduler preload)
+  - backend/.env.example (modified - added SYNC_CRON)
+- **Learnings:**
+  - Use node-cron for scheduling in AdonisJS
+  - Add preload with environment: ['web'] to run only on server start
+  - Default cron "0 0 * * *" runs at midnight daily
+---
+
+## COMPLETE - 2026-01-11
+All 53 user stories implemented successfully!
