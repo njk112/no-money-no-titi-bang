@@ -1,5 +1,7 @@
 # no-money-no-titi-bang
 
+./scripts/ralph/ralph.sh 25
+
 # Initial Project Description
 
 No money no titi bang, is a OSRS trading focused project which aims to find profitable trades.

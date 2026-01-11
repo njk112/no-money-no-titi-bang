@@ -1,0 +1,842 @@
+{
+  "project": "OSRS GE Trading Dashboard",
+  "branchName": "ralph/osrs-ge-dashboard",
+  "description": "Trading analysis dashboard for Old School RuneScape's Grand Exchange that fetches price data from OSRS Wiki API, identifies profitable flip opportunities, and helps users find the best trades based on their budget.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Items table migration",
+      "description": "As a developer, I need an items table to store basic item information.",
+      "acceptanceCriteria": [
+        "Create migration for `items` table",
+        "Columns: id (integer, primary key - OSRS item ID), name (string), icon_filename (string nullable), buy_limit (integer nullable), members (boolean default false), high_alch (integer nullable), low_alch (integer nullable), created_at, updated_at",
+        "Migration runs successfully with `node ace migration:run`",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Item prices table migration",
+      "description": "As a developer, I need a prices table to store price snapshots.",
+      "acceptanceCriteria": [
+        "Create migration for `item_prices` table",
+        "Columns: id (auto increment), item_id (foreign key to items), high_price (integer nullable), low_price (integer nullable), high_time (datetime nullable), low_time (datetime nullable), synced_at (datetime)",
+        "Foreign key constraint on item_id with cascade delete",
+        "Index on item_id and synced_at",
+        "Migration runs successfully",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Item model",
+      "description": "As a developer, I need an Item model to interact with the items table.",
+      "acceptanceCriteria": [
+        "Create Item model in `app/models/item.ts`",
+        "Define columns matching migration",
+        "HasMany relationship to ItemPrice",
+        "Computed property `iconUrl` that returns full wiki image URL: https://oldschool.runescape.wiki/images/{icon_filename}",
+        "Computed property `geTrackerUrl` that returns GE-Tracker item page URL",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "ItemPrice model",
+      "description": "As a developer, I need an ItemPrice model to interact with the prices table.",
+      "acceptanceCriteria": [
+        "Create ItemPrice model in `app/models/item_price.ts`",
+        "Define columns matching migration",
+        "BelongsTo relationship to Item",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "OSRS Wiki API client",
+      "description": "As a developer, I need a client to fetch data from the OSRS Wiki API.",
+      "acceptanceCriteria": [
+        "Create service in `app/services/osrs_wiki_client.ts`",
+        "Set User-Agent header: \"osrs-ge-tracker - OSRS trading dashboard\" (Wiki requires descriptive User-Agent)",
+        "Method `fetchMapping()` that calls `https://prices.runescape.wiki/api/v1/osrs/mapping`",
+        "Returns typed array: { id: number, name: string, examine: string, members: boolean, lowalch: number, highalch: number, limit: number, value: number, icon: string }[]",
+        "Method `fetchLatestPrices()` that calls `https://prices.runescape.wiki/api/v1/osrs/latest`",
+        "Returns typed object: { data: { [itemId: string]: { high: number, highTime: number, low: number, lowTime: number } } }",
+        "Throws Error with descriptive message on non-200 response",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Items sync service",
+      "description": "As a developer, I need a service to sync item metadata from the Wiki API.",
+      "acceptanceCriteria": [
+        "Create service in `app/services/items_sync_service.ts`",
+        "Method `syncItems()` that fetches mapping and upserts all items",
+        "Uses database transaction for atomicity",
+        "Returns count of items synced",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Prices sync service",
+      "description": "As a developer, I need a service to sync price data from the Wiki API.",
+      "acceptanceCriteria": [
+        "Create service in `app/services/prices_sync_service.ts`",
+        "Method `syncPrices()` that fetches latest prices and creates ItemPrice records",
+        "Only creates records for items that exist in our database",
+        "Sets synced_at to current timestamp",
+        "Returns count of prices synced",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Items sync CLI command",
+      "description": "As a developer, I need a CLI command to sync items.",
+      "acceptanceCriteria": [
+        "Create Ace command `node ace sync:items`",
+        "Calls ItemsSyncService.syncItems()",
+        "Logs start, completion, and item count",
+        "Exits with error code on failure",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Prices sync CLI command",
+      "description": "As a developer, I need a CLI command to sync prices.",
+      "acceptanceCriteria": [
+        "Create Ace command `node ace sync:prices`",
+        "Calls PricesSyncService.syncPrices()",
+        "Logs start, completion, and price count",
+        "Exits with error code on failure",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Full sync CLI command",
+      "description": "As a developer, I need a CLI command to run both syncs.",
+      "acceptanceCriteria": [
+        "Create Ace command `node ace sync:all`",
+        "Runs items sync first, then prices sync",
+        "Logs total time taken",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Items list endpoint - basic",
+      "description": "As a frontend, I need to fetch a paginated list of items with latest prices.",
+      "acceptanceCriteria": [
+        "Create ItemsController in `app/controllers/items_controller.ts`",
+        "GET `/api/items` endpoint",
+        "Query params: `page` (default 1), `limit` (default 50, max 100)",
+        "Returns items joined with their latest price record (subquery for most recent synced_at per item)",
+        "Response shape: { data: [...items], meta: { total, page, limit, totalPages } }",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Items list endpoint - calculated fields",
+      "description": "As a frontend, I need profit calculations included in the items response.",
+      "acceptanceCriteria": [
+        "Add calculated fields to items response: profit_margin (high_price - low_price), max_profit (profit_margin * buy_limit)",
+        "Handle null buy_limit (max_profit = null)",
+        "Handle null prices (profit_margin = null)",
+        "Default sort by max_profit descending (nulls last)",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Items list endpoint - search",
+      "description": "As a frontend, I need to search items by name.",
+      "acceptanceCriteria": [
+        "Add `search` query param to GET `/api/items`",
+        "Case-insensitive partial match on item name",
+        "Empty search returns all items",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Items list endpoint - filters",
+      "description": "As a frontend, I need to filter items by price, margin, buy limit, and members status.",
+      "acceptanceCriteria": [
+        "Add query params: `min_price`, `max_price` (filter on low_price)",
+        "Add query params: `min_margin`, `max_margin` (filter on calculated profit_margin)",
+        "Add query param: `min_buy_limit` (filter on buy_limit)",
+        "Add query param: `members` (boolean) - if true, only members items; if false, only F2P items; if omitted, all items",
+        "All filters combine with AND logic",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Items list endpoint - sorting",
+      "description": "As a frontend, I need to sort items by different criteria.",
+      "acceptanceCriteria": [
+        "Add `sort` query param with options: profit, margin, price, name, buy_limit",
+        "Add `order` query param: asc, desc (default desc)",
+        "profit = max_profit, margin = profit_margin, price = low_price",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Single item endpoint",
+      "description": "As a frontend, I need to fetch detailed data for one item.",
+      "acceptanceCriteria": [
+        "GET `/api/items/:id` endpoint",
+        "Returns item with latest price data",
+        "Includes all fields: name, icon_url, buy_limit, members, high_alch, low_alch",
+        "Includes price fields: high_price, low_price, high_time, low_time",
+        "Includes calculated: profit_margin, max_profit, ge_tracker_url",
+        "Returns 404 with message if item not found",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Suggestions endpoint",
+      "description": "As a frontend, I need item recommendations based on a budget.",
+      "acceptanceCriteria": [
+        "GET `/api/suggestions` endpoint",
+        "Required query param: `budget` (integer, GP amount). Returns 400 if missing or invalid.",
+        "Filter: only items where low_price <= budget AND low_price > 0 AND profit_margin > 0 AND buy_limit > 0",
+        "Scoring formula: score = (profit_margin * buy_limit) * log10(buy_limit + 1)",
+        "Returns top 6 items sorted by score descending",
+        "For each item, calculate: suggested_quantity = Math.min(Math.floor(budget / low_price), buy_limit), estimated_profit = suggested_quantity * profit_margin",
+        "Response includes all item fields plus suggested_quantity and estimated_profit",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "API client setup",
+      "description": "As a frontend developer, I need a configured API client for backend calls.",
+      "acceptanceCriteria": [
+        "Create `lib/api.ts` with fetch wrapper",
+        "Base URL configurable via environment variable (default: http://localhost:3333)",
+        "Includes credentials for session cookies",
+        "Typed response handling with generics",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "App layout component",
+      "description": "As a user, I want a consistent app layout with header.",
+      "acceptanceCriteria": [
+        "Create `components/layout/app-layout.tsx`",
+        "Header with app title \"OSRS GE Tracker\"",
+        "Navigation links: Dashboard, Suggestions",
+        "Main content area with padding",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Mobile navigation menu",
+      "description": "As a user, I want navigation accessible on mobile.",
+      "acceptanceCriteria": [
+        "Add hamburger menu button visible on mobile only",
+        "Clicking hamburger opens sheet/drawer with nav links",
+        "Links close the drawer when clicked",
+        "Uses shadcn Sheet component",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Apply layout to pages",
+      "description": "As a frontend developer, I need pages to use the layout.",
+      "acceptanceCriteria": [
+        "Wrap root layout with AppLayout",
+        "All pages render inside the layout",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Dashboard page structure",
+      "description": "As a user, I want the dashboard page to show items.",
+      "acceptanceCriteria": [
+        "Update page at `/`",
+        "Page title \"Dashboard\" as h1",
+        "Sections for: search (top), filters (sidebar/top), table (main)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Items data fetching hook",
+      "description": "As a frontend developer, I need to fetch items from the API.",
+      "acceptanceCriteria": [
+        "Create `hooks/use-items.ts`",
+        "Hook signature: useItems(params: ItemsParams): ItemsResult",
+        "Params type: { page?, search?, min_price?, max_price?, min_margin?, max_margin?, min_buy_limit?, members?, sort?, order? }",
+        "Result type: { items: Item[], total: number, totalPages: number, isLoading: boolean, error: Error | null, refetch: () => void }",
+        "Builds query string from non-undefined params",
+        "Refetches when any param changes",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Items table structure",
+      "description": "As a user, I want to see items in a table format.",
+      "acceptanceCriteria": [
+        "Create `components/items-table.tsx` using shadcn Table",
+        "Columns: Icon, Name, Buy Price (low_price), Sell Price (high_price), Margin, Buy Limit, Max Profit",
+        "Accepts items array as prop",
+        "Shows \"No items found\" when array is empty",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Items table row formatting",
+      "description": "As a user, I want table data formatted clearly.",
+      "acceptanceCriteria": [
+        "Icon column shows 32x32 image from icon_url (or placeholder div if null)",
+        "Name column shows item name with yellow star icon (lucide Star, filled) next to members-only items",
+        "Prices formatted with commas (e.g., \"1,234,567\")",
+        "Margin shows color: green if > 100, yellow if 1-100, gray if <= 0 or null",
+        "Buy Limit shows number or \"-\" if null",
+        "Max Profit shows formatted number or \"-\" if null",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Items table row click handler",
+      "description": "As a user, I want to click a row to see item details.",
+      "acceptanceCriteria": [
+        "Rows have hover state (background color change)",
+        "Clicking row calls onItemClick(itemId) callback prop",
+        "Cursor shows pointer on hover",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 26,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Table loading skeleton",
+      "description": "As a user, I want to see a loading state while items load.",
+      "acceptanceCriteria": [
+        "Create `components/table-skeleton.tsx`",
+        "Shows 10 skeleton rows matching table column structure",
+        "Uses shadcn Skeleton component",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Table error state",
+      "description": "As a user, I want to see an error message if loading fails.",
+      "acceptanceCriteria": [
+        "Create `components/error-state.tsx`",
+        "Shows alert icon and error message text",
+        "\"Try Again\" button that calls onRetry callback",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Search input component",
+      "description": "As a user, I want to search for items by name.",
+      "acceptanceCriteria": [
+        "Create `components/search-input.tsx`",
+        "Uses shadcn Input with search icon (lucide Search)",
+        "Placeholder \"Search items...\"",
+        "X button to clear when value is not empty",
+        "Calls onChange(value) callback",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Search integration with debounce",
+      "description": "As a user, I want search to update results as I type.",
+      "acceptanceCriteria": [
+        "Add SearchInput to dashboard above table",
+        "Create useDebounce hook or use lodash.debounce (300ms)",
+        "Debounced value updates URL search param `?search=`",
+        "URL change triggers useItems refetch",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Filter panel component",
+      "description": "As a user, I want a panel to set filter criteria.",
+      "acceptanceCriteria": [
+        "Create `components/filter-panel.tsx`",
+        "Props: `children` (filter inputs will be passed as children)",
+        "Renders shadcn Card with CardHeader \"Filters\" and CardContent for children",
+        "Desktop (md+): always visible, renders normally",
+        "Mobile (<md): collapsed by default, \"Filters\" button toggles visibility using local state",
+        "Uses shadcn Collapsible for mobile toggle behavior",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 31,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Price range filter",
+      "description": "As a user, I want to filter by price range.",
+      "acceptanceCriteria": [
+        "Add to FilterPanel: two number inputs side by side",
+        "Labels: \"Min Price\", \"Max Price\"",
+        "Values update URL params `min_price`, `max_price` (debounced 300ms)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 32,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "Margin range filter",
+      "description": "As a user, I want to filter by profit margin range.",
+      "acceptanceCriteria": [
+        "Add to FilterPanel: two number inputs side by side",
+        "Labels: \"Min Margin\", \"Max Margin\"",
+        "Values update URL params `min_margin`, `max_margin` (debounced 300ms)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 33,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "Buy limit filter",
+      "description": "As a user, I want to filter by minimum buy limit.",
+      "acceptanceCriteria": [
+        "Add to FilterPanel: single number input",
+        "Label: \"Min Buy Limit\"",
+        "Value updates URL param `min_buy_limit` (debounced 300ms)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 34,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-035",
+      "title": "Members filter",
+      "description": "As a user, I want to filter by members/F2P status.",
+      "acceptanceCriteria": [
+        "Add to FilterPanel: select/dropdown with options \"All\", \"Members Only\", \"F2P Only\"",
+        "Label: \"Item Type\"",
+        "Default: \"All\" (no filter applied)",
+        "Value updates URL param `members` (true/false/omitted)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 35,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-036",
+      "title": "Clear filters button",
+      "description": "As a user, I want to reset all filters quickly.",
+      "acceptanceCriteria": [
+        "Add \"Clear Filters\" button at bottom of FilterPanel",
+        "Only visible when at least one filter param is set",
+        "Clicking clears all filter URL params",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 36,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-037",
+      "title": "Pagination component",
+      "description": "As a user, I want to navigate between pages of items.",
+      "acceptanceCriteria": [
+        "Create `components/pagination.tsx` using shadcn Pagination",
+        "Props: currentPage, totalPages, onPageChange",
+        "Shows: Previous, page numbers (with ellipsis if many), Next",
+        "Previous disabled on page 1, Next disabled on last page",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 37,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-038",
+      "title": "Pagination integration",
+      "description": "As a user, I want pagination to work with the items table.",
+      "acceptanceCriteria": [
+        "Add Pagination below items table",
+        "Shows total items count",
+        "Clicking page updates URL param `page`",
+        "Page resets to 1 when search/filters change",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 38,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-039",
+      "title": "Modal shell component",
+      "description": "As a frontend developer, I need a reusable modal using shadcn Dialog.",
+      "acceptanceCriteria": [
+        "Create `components/modal.tsx` wrapping shadcn Dialog",
+        "Props: isOpen, onClose, title (optional), children",
+        "Renders DialogContent with optional DialogHeader/DialogTitle",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 39,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-040",
+      "title": "Item detail data fetching",
+      "description": "As a frontend developer, I need to fetch single item data.",
+      "acceptanceCriteria": [
+        "Create `hooks/use-item.ts`",
+        "Accepts itemId (number | null)",
+        "Returns: item, isLoading, error",
+        "Only fetches when itemId is not null",
+        "Typecheck passes"
+      ],
+      "priority": 40,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-041",
+      "title": "Item detail modal layout",
+      "description": "As a user, I want to see item details in a modal.",
+      "acceptanceCriteria": [
+        "Create `components/item-detail-modal.tsx`",
+        "Props: itemId (number | null), isOpen, onClose",
+        "Uses useItem hook to fetch data",
+        "Header: item icon (64x64), item name as title, yellow star icon next to name if members-only",
+        "Shows skeleton while loading",
+        "Shows error state if fetch fails",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 41,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-042",
+      "title": "Item detail modal - price section",
+      "description": "As a user, I want to see price information in the modal.",
+      "acceptanceCriteria": [
+        "Add \"Prices\" section to modal content",
+        "2-column grid showing: Buy Price (low_price), Sell Price (high_price)",
+        "Show last update times (high_time, low_time) formatted as relative time",
+        "Values formatted with commas",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 42,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-043",
+      "title": "Item detail modal - profit section",
+      "description": "As a user, I want to see profit calculations in the modal.",
+      "acceptanceCriteria": [
+        "Add \"Profit Potential\" section below prices",
+        "Shows: Buy Limit, Profit Margin, Max Profit",
+        "Max Profit in larger green text",
+        "Shows \"-\" for null values",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 43,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-044",
+      "title": "Item detail modal - alchemy section",
+      "description": "As a user, I want to see alchemy values in the modal.",
+      "acceptanceCriteria": [
+        "Add \"Alchemy Values\" section below profit section",
+        "Shows: High Alch value, Low Alch value",
+        "Values formatted with commas and \"gp\" suffix",
+        "Shows \"-\" for null values",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 44,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-045",
+      "title": "Item detail modal - external link",
+      "description": "As a user, I want to view the item on GE-Tracker.",
+      "acceptanceCriteria": [
+        "Add \"View on GE-Tracker\" button in modal footer",
+        "Uses item's ge_tracker_url field",
+        "Opens in new tab (target=\"_blank\", rel=\"noopener\")",
+        "Button has external link icon (lucide ExternalLink)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 45,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-046",
+      "title": "Item modal integration in dashboard",
+      "description": "As a user, I want clicking table rows to open the modal.",
+      "acceptanceCriteria": [
+        "Dashboard page manages selectedItemId state (number | null)",
+        "Pass onItemClick to ItemsTable that sets selectedItemId",
+        "Render ItemDetailModal with selectedItemId",
+        "onClose sets selectedItemId to null",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 46,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-047",
+      "title": "Suggestions page structure",
+      "description": "As a user, I want a page to get item recommendations.",
+      "acceptanceCriteria": [
+        "Create page at `/suggestions`",
+        "Page title \"Suggestions\" as h1",
+        "Uses app layout",
+        "Two sections: budget input (top), results (below)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 47,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-048",
+      "title": "Budget input component",
+      "description": "As a user, I want to enter my budget.",
+      "acceptanceCriteria": [
+        "Create `components/budget-input.tsx`",
+        "Large number input with label \"Enter your budget (GP)\"",
+        "Formats display with commas as user types",
+        "\"Get Suggestions\" button next to input",
+        "Button disabled when value is empty or 0",
+        "Calls onSubmit(budget) when button clicked",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 48,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-049",
+      "title": "Suggestions data fetching",
+      "description": "As a frontend developer, I need to fetch suggestions.",
+      "acceptanceCriteria": [
+        "Create `hooks/use-suggestions.ts`",
+        "Method fetchSuggestions(budget) that fetches `/api/suggestions?budget={budget}`",
+        "Returns: suggestions, isLoading, error, fetch function",
+        "Does not fetch on mount (manual trigger only)",
+        "Typecheck passes"
+      ],
+      "priority": 49,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-050",
+      "title": "Suggestion cards grid",
+      "description": "As a user, I want suggestions displayed as cards.",
+      "acceptanceCriteria": [
+        "Create `components/suggestions-grid.tsx`",
+        "Grid: 3 columns desktop, 2 tablet, 1 mobile",
+        "Shows 6 skeleton cards when loading",
+        "Shows \"Enter a budget to see suggestions\" when no data and not loading",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 50,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-051",
+      "title": "Suggestion card component",
+      "description": "As a user, I want each suggestion to show key info.",
+      "acceptanceCriteria": [
+        "Create `components/suggestion-card.tsx` using shadcn Card",
+        "Props: suggestion: SuggestionItem, onItemClick: (id: number) => void",
+        "Layout: icon (48x48) on left, text on right",
+        "Shows: item name (with yellow star if members), suggested quantity (e.g., \"Buy: 70\"), estimated profit in green (e.g., \"+3,500,000 gp\")",
+        "Card has cursor-pointer and hover:shadow-md",
+        "onClick calls onItemClick(suggestion.id)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 51,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-052",
+      "title": "Suggestions page integration",
+      "description": "As a user, I want the suggestions page fully functional.",
+      "acceptanceCriteria": [
+        "Wire up BudgetInput to trigger useSuggestions.fetch",
+        "Pass suggestions to SuggestionsGrid",
+        "Clicking card opens ItemDetailModal (reuse from dashboard)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 52,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-053",
+      "title": "Scheduled sync configuration",
+      "description": "As a system, I need automatic price syncing every 24 hours.",
+      "acceptanceCriteria": [
+        "Install node-cron or use AdonisJS scheduler",
+        "Create scheduler that runs `sync:all` every 24 hours",
+        "Schedule configurable via .env (SYNC_CRON=\"0 0 * * *\")",
+        "Logs when sync starts and completes",
+        "Typecheck passes"
+      ],
+      "priority": 53,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}
