@@ -41,7 +41,7 @@ export default class SuggestionsController {
         AND ip.low_price > 0
         AND (ip.high_price - ip.low_price) > 0
         AND items.buy_limit > 0
-      ORDER BY (ip.high_price - ip.low_price) * items.buy_limit * log10(items.buy_limit + 1) DESC
+      ORDER BY (ip.high_price - ip.low_price) * items.buy_limit DESC
       LIMIT 6
     `, [budget, budget, budget])
 
