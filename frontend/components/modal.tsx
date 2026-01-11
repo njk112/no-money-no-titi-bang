@@ -18,10 +18,12 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg">
-        {title && (
+        {title ? (
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
+        ) : (
+          <DialogTitle className="sr-only">Item Details</DialogTitle>
         )}
         {children}
       </DialogContent>
