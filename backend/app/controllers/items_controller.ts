@@ -170,6 +170,7 @@ export default class ItemsController {
       .first()
 
     // Calculate highs/lows from 24h history
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const priceStats = await item
       .related('prices')
       .query()
@@ -179,7 +180,7 @@ export default class ItemsController {
         item.related('prices').query().client.raw('MAX(low_price) as buying_high'),
         item.related('prices').query().client.raw('MIN(low_price) as buying_low')
       )
-      .whereRaw("synced_at >= datetime('now', '-24 hours')")
+      .where('synced_at', '>=', twentyFourHoursAgo)
       .first()
 
     const highPrice = latestPrice?.highPrice ?? null
