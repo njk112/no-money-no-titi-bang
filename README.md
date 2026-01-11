@@ -133,3 +133,63 @@ The frontend will start on `http://localhost:3000`
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+
+### Database & Data Management
+
+All database commands should be run from the `backend` directory.
+
+#### Migrations
+
+```bash
+# Run pending migrations
+node ace migration:run
+
+# Check migration status
+node ace migration:status
+
+# Rollback last batch of migrations
+node ace migration:rollback
+
+# Reset database (rollback all migrations)
+node ace migration:reset
+
+# Fresh start (drop all tables and re-migrate)
+node ace migration:fresh
+```
+
+#### Data Sync Commands
+
+The application fetches item data and prices from the [OSRS Wiki Prices API](https://prices.runescape.wiki/api/v1/osrs).
+
+```bash
+# Sync everything (items + prices + volumes)
+node ace sync:all
+
+# Sync only items (metadata: names, icons, buy limits, alch values)
+node ace sync:items
+
+# Sync only prices and trading volumes
+node ace sync:prices
+```
+
+**Note:** Prices and volumes should be synced periodically to keep data fresh. Items only need to be synced when new items are added to the game.
+
+### API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/items` | List items (paginated, filterable, sortable) |
+| `GET /api/items/:id` | Get single item with full details |
+| `GET /api/suggestions?budget=X` | Get top 6 profitable items for a given budget |
+
+#### Query Parameters for `/api/items`
+
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 50, max: 100)
+- `search` - Search by item name
+- `min_price` / `max_price` - Filter by price range
+- `min_margin` / `max_margin` - Filter by profit margin
+- `min_buy_limit` - Filter by minimum buy limit
+- `members` - Filter by members-only status (`true` / `false`)
+- `sort` - Sort by: `profit`, `margin`, `price`, `name`, `buy_limit`
+- `order` - Sort order: `asc`, `desc`

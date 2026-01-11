@@ -36,7 +36,8 @@ export default class ItemsController {
 
     // Search filter (US-013)
     if (search) {
-      query.whereILike('items.name', `%${search}%`)
+      const escapedSearch = search.replace(/[%_]/g, '\\$&')
+      query.whereRaw('LOWER(items.name) LIKE LOWER(?)', [`%${escapedSearch}%`])
     }
 
     // Price range filters (US-014)
