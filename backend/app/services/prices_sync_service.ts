@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import db from '@adonisjs/lucid/services/db'
 import Item from '#models/item'
 import ItemPrice from '#models/item_price'
 import OsrsWikiClient from './osrs_wiki_client.js'
@@ -17,15 +18,20 @@ export default class PricesSyncService {
     const existingItemIds = await Item.query().select('id')
     const itemIdSet = new Set(existingItemIds.map((item) => item.id))
 
-    let count = 0
+    const priceRecords: Array<{
+      itemId: number
+      highPrice: number | null
+      lowPrice: number | null
+      highTime: DateTime | null
+      lowTime: DateTime | null
+      syncedAt: DateTime
+    }> = []
+
     for (const [itemIdStr, priceData] of Object.entries(prices)) {
       const itemId = parseInt(itemIdStr, 10)
+      if (!itemIdSet.has(itemId)) continue
 
-      if (!itemIdSet.has(itemId)) {
-        continue
-      }
-
-      await ItemPrice.create({
+      priceRecords.push({
         itemId,
         highPrice: priceData.high ?? null,
         lowPrice: priceData.low ?? null,
@@ -33,9 +39,12 @@ export default class PricesSyncService {
         lowTime: priceData.lowTime ? DateTime.fromSeconds(priceData.lowTime) : null,
         syncedAt,
       })
-      count++
     }
 
-    return count
+    await db.transaction(async (trx) => {
+      await ItemPrice.createMany(priceRecords, { client: trx })
+    })
+
+    return priceRecords.length
   }
 }
