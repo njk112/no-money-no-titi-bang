@@ -12,23 +12,21 @@ export default class ItemsSyncService {
   async syncItems(): Promise<number> {
     const mapping = await this.wikiClient.fetchMapping()
 
-    await db.transaction(async (trx) => {
-      for (const item of mapping) {
-        await Item.updateOrCreate(
-          { id: item.id },
-          {
-            id: item.id,
-            name: item.name,
-            iconFilename: item.icon || null,
-            buyLimit: item.limit || null,
-            members: item.members,
-            highAlch: item.highalch || null,
-            lowAlch: item.lowalch || null,
-          },
-          { client: trx }
-        )
-      }
-    })
+    const records = mapping.map((item) => ({
+      id: item.id,
+      name: item.name,
+      icon_filename: item.icon || null,
+      buy_limit: item.limit || null,
+      members: item.members,
+      high_alch: item.highalch || null,
+      low_alch: item.lowalch || null,
+    }))
+
+    // Batch upsert using onConflict
+    await db.table('items')
+      .insert(records)
+      .onConflict('id')
+      .merge(['name', 'icon_filename', 'buy_limit', 'members', 'high_alch', 'low_alch'])
 
     return mapping.length
   }
