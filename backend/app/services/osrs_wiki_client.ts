@@ -23,13 +23,13 @@ export interface LatestPricesResponse {
 
 const USER_AGENT = 'osrs-ge-tracker - OSRS trading dashboard'
 const BASE_URL = 'https://prices.runescape.wiki/api/v1/osrs'
+const TIMEOUT_MS = 30000
 
 export default class OsrsWikiClient {
   async fetchMapping(): Promise<MappingItem[]> {
     const response = await fetch(`${BASE_URL}/mapping`, {
-      headers: {
-        'User-Agent': USER_AGENT,
-      },
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     })
 
     if (!response.ok) {
@@ -41,9 +41,8 @@ export default class OsrsWikiClient {
 
   async fetchLatestPrices(): Promise<LatestPricesResponse> {
     const response = await fetch(`${BASE_URL}/latest`, {
-      headers: {
-        'User-Agent': USER_AGENT,
-      },
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     })
 
     if (!response.ok) {
