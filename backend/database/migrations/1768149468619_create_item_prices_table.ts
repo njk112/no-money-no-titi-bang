@@ -18,7 +18,7 @@ export default class extends BaseSchema {
       table.timestamp('low_time').nullable()
       table.timestamp('synced_at').notNullable()
 
-      table.index(['item_id'])
+      table.unique(['item_id', 'synced_at'])
       table.index(['synced_at'])
     })
   }
