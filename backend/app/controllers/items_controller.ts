@@ -15,6 +15,13 @@ export default class ItemsController {
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
+    // Subquery to get max synced_at per item (avoids N+1)
+    const latestPricesSubquery = `
+      SELECT item_id, MAX(synced_at) as max_synced_at
+      FROM item_prices
+      GROUP BY item_id
+    `
+
     const query = Item.query()
       .select(
         'items.id',
@@ -35,8 +42,11 @@ export default class ItemsController {
       .leftJoin('item_prices', (join) => {
         join.on('items.id', '=', 'item_prices.item_id')
       })
+      .leftJoinRaw(
+        `(${latestPricesSubquery}) as latest_prices ON items.id = latest_prices.item_id`
+      )
       .whereRaw(
-        'item_prices.synced_at IS NULL OR item_prices.synced_at = (SELECT MAX(ip2.synced_at) FROM item_prices ip2 WHERE ip2.item_id = items.id)'
+        'item_prices.synced_at IS NULL OR item_prices.synced_at = latest_prices.max_synced_at'
       )
 
     // Search filter (US-013)
