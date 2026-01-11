@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "dev-browser@dev-browser-marketplace": true
+    
+  },
+    "permissions": {
+    "allow": ["Skill(dev-browser:dev-browser)", "Bash(npx tsx:*)"]
+  }
+}
