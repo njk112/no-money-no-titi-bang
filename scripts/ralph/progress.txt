@@ -1,11 +1,18 @@
 # Ralph Progress Log
 Started: 2026-01-11
+Feature: OSRS GE Trading Dashboard
 
 ## Codebase Patterns
-- Migrations: IF NOT EXISTS
-- Types: Export from actions.ts
+- Backend: AdonisJS 6 with Lucid ORM
+- Frontend: Next.js 16 with React 19
+- Database: SQLite with better-sqlite3
+- UI: Shadcn components
 
 ## Key Files
-- db/schema.ts
-- app/auth/actions.ts
+- backend/app/models/
+- backend/app/services/
+- backend/app/controllers/
+- frontend/components/
+- frontend/hooks/
+- frontend/lib/api.ts
 ---
