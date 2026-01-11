@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Star } from 'lucide-react'
 import {
   Table,
@@ -15,6 +16,23 @@ import { cn } from '@/lib/utils'
 interface ItemsTableProps {
   items: Item[]
   onItemClick?: (itemId: number) => void
+}
+
+function ItemIcon({ src, alt }: { src: string | null; alt: string }) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || hasError) {
+    return <div className="w-8 h-8 bg-muted rounded" />
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-8 h-8 object-contain"
+      onError={() => setHasError(true)}
+    />
+  )
 }
 
 function formatNumber(num: number | null): string {
@@ -61,15 +79,7 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
             onClick={() => onItemClick?.(item.id)}
           >
             <TableCell>
-              {item.icon_url ? (
-                <img
-                  src={item.icon_url}
-                  alt={item.name}
-                  className="w-8 h-8 object-contain"
-                />
-              ) : (
-                <div className="w-8 h-8 bg-muted rounded" />
-              )}
+              <ItemIcon src={item.icon_url} alt={item.name} />
             </TableCell>
             <TableCell className="font-medium">
               <span className="flex items-center gap-1">
