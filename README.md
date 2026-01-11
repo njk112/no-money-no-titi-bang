@@ -190,6 +190,7 @@ node ace sync:prices
 - `min_price` / `max_price` - Filter by price range
 - `min_margin` / `max_margin` - Filter by profit margin
 - `min_buy_limit` - Filter by minimum buy limit
+- `min_volume` / `max_volume` - Filter by daily trading volume
 - `members` - Filter by members-only status (`true` / `false`)
 - `sort` - Sort by: `profit`, `margin`, `price`, `name`, `buy_limit`
 - `order` - Sort order: `asc`, `desc`

@@ -31,6 +31,8 @@ export interface ItemsParams {
   min_margin?: number
   max_margin?: number
   min_buy_limit?: number
+  min_volume?: number
+  max_volume?: number
   members?: boolean
   sort?: 'profit' | 'margin' | 'price' | 'name' | 'buy_limit'
   order?: 'asc' | 'desc'

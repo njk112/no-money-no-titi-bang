@@ -11,6 +11,8 @@ export default class ItemsController {
     const minMargin = request.input('min_margin')
     const maxMargin = request.input('max_margin')
     const minBuyLimit = request.input('min_buy_limit')
+    const minVolume = request.input('min_volume')
+    const maxVolume = request.input('max_volume')
     const members = request.input('members')
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
@@ -32,6 +34,7 @@ export default class ItemsController {
       .select('item_prices.high_time')
       .select('item_prices.low_time')
       .select('item_prices.synced_at')
+      .select('item_prices.volume')
       .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
 
     // Search filter (US-013)
@@ -65,6 +68,14 @@ export default class ItemsController {
     // Buy limit filter (US-014)
     if (minBuyLimit) {
       query.where('items.buy_limit', '>=', parseInt(minBuyLimit, 10))
+    }
+
+    // Volume filters
+    if (minVolume) {
+      query.where('item_prices.volume', '>=', parseInt(minVolume, 10))
+    }
+    if (maxVolume) {
+      query.where('item_prices.volume', '<=', parseInt(maxVolume, 10))
     }
 
     // Members filter (US-014)
@@ -131,6 +142,7 @@ export default class ItemsController {
         low_time: item.$extras.low_time ?? null,
         profit_margin: profitMargin,
         max_profit: maxProfit,
+        volume: item.$extras.volume ?? null,
       }
     })
 

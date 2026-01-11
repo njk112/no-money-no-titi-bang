@@ -20,6 +20,8 @@ export default function Dashboard() {
   const [minPrice, setMinPrice] = useState<string>('')
   const [maxPrice, setMaxPrice] = useState<string>('')
   const [minMargin, setMinMargin] = useState<string>('')
+  const [minVolume, setMinVolume] = useState<string>('')
+  const [maxVolume, setMaxVolume] = useState<string>('')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
   const debouncedSearch = useDebounce(search, 300)
@@ -30,9 +32,11 @@ export default function Dashboard() {
     min_price: minPrice ? Number(minPrice) : undefined,
     max_price: maxPrice ? Number(maxPrice) : undefined,
     min_margin: minMargin ? Number(minMargin) : undefined,
+    min_volume: minVolume ? Number(minVolume) : undefined,
+    max_volume: maxVolume ? Number(maxVolume) : undefined,
     sort: 'profit',
     order: 'desc',
-  }), [page, debouncedSearch, minPrice, maxPrice, minMargin])
+  }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume])
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params)
 
@@ -93,6 +97,32 @@ export default function Dashboard() {
                   value={minMargin}
                   onChange={(e) => {
                     setMinMargin(e.target.value)
+                    setPage(1)
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="minVolume">Min Volume</Label>
+                <Input
+                  id="minVolume"
+                  type="number"
+                  placeholder="0"
+                  value={minVolume}
+                  onChange={(e) => {
+                    setMinVolume(e.target.value)
+                    setPage(1)
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="maxVolume">Max Volume</Label>
+                <Input
+                  id="maxVolume"
+                  type="number"
+                  placeholder="No limit"
+                  value={maxVolume}
+                  onChange={(e) => {
+                    setMaxVolume(e.target.value)
                     setPage(1)
                   }}
                 />
