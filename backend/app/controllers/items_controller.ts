@@ -212,6 +212,7 @@ export default class ItemsController {
       selling_high: sellingHigh,
       selling_low: sellingLow,
       ge_tracker_url: item.geTrackerUrl,
+      volume: latestPrice?.volume ?? null,
     })
   }
 }

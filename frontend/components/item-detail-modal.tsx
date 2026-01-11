@@ -188,6 +188,17 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
             </div>
           </div>
 
+          {/* Trading Volume Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Trading Volume
+            </h3>
+            <div>
+              <div className="text-sm text-muted-foreground">Daily Volume</div>
+              <div className="font-medium">{formatNumber(item.volume ?? null)}</div>
+            </div>
+          </div>
+
           {/* External Link */}
           {item.ge_tracker_url && (
             <div className="pt-2">

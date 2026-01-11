@@ -20,6 +20,7 @@ export interface Item {
   selling_high?: number | null
   selling_low?: number | null
   ge_tracker_url?: string
+  volume?: number | null
 }
 
 export interface ItemsParams {

@@ -12,7 +12,10 @@ export default class PricesSyncService {
   }
 
   async syncPrices(): Promise<number> {
-    const { data: prices } = await this.wikiClient.fetchLatestPrices()
+    const [{ data: prices }, { data: volumes }] = await Promise.all([
+      this.wikiClient.fetchLatestPrices(),
+      this.wikiClient.fetchVolumes(),
+    ])
     const syncedAt = DateTime.now()
 
     const existingItemIds = await Item.query().select('id')
@@ -24,6 +27,7 @@ export default class PricesSyncService {
       lowPrice: number | null
       highTime: DateTime | null
       lowTime: DateTime | null
+      volume: number | null
       syncedAt: DateTime
     }> = []
 
@@ -37,6 +41,7 @@ export default class PricesSyncService {
         lowPrice: priceData.low ?? null,
         highTime: priceData.highTime ? DateTime.fromSeconds(priceData.highTime) : null,
         lowTime: priceData.lowTime ? DateTime.fromSeconds(priceData.lowTime) : null,
+        volume: volumes[itemIdStr] ?? null,
         syncedAt,
       })
     }

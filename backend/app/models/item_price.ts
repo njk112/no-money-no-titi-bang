@@ -25,6 +25,9 @@ export default class ItemPrice extends BaseModel {
   @column.dateTime()
   declare syncedAt: DateTime
 
+  @column()
+  declare volume: number | null
+
   @belongsTo(() => Item)
   declare item: BelongsTo<typeof Item>
 }
