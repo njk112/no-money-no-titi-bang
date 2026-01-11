@@ -15,13 +15,6 @@ export default class ItemsController {
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
-    // Subquery to get max synced_at per item (avoids N+1)
-    const latestPricesSubquery = `
-      SELECT item_id, MAX(synced_at) as max_synced_at
-      FROM item_prices
-      GROUP BY item_id
-    `
-
     const query = Item.query()
       .select(
         'items.id',
@@ -39,12 +32,14 @@ export default class ItemsController {
       .select('item_prices.high_time')
       .select('item_prices.low_time')
       .select('item_prices.synced_at')
-      .leftJoin('item_prices', (join) => {
-        join.on('items.id', '=', 'item_prices.item_id')
-      })
-      .leftJoinRaw(
-        `(${latestPricesSubquery}) as latest_prices ON items.id = latest_prices.item_id`
-      )
+      .joinRaw(`
+        LEFT JOIN item_prices ON items.id = item_prices.item_id
+        LEFT JOIN (
+          SELECT item_id, MAX(synced_at) as max_synced_at
+          FROM item_prices
+          GROUP BY item_id
+        ) latest_prices ON items.id = latest_prices.item_id
+      `)
       .whereRaw(
         'item_prices.synced_at IS NULL OR item_prices.synced_at = latest_prices.max_synced_at'
       )
@@ -167,11 +162,24 @@ export default class ItemsController {
       return response.notFound({ message: 'Item not found' })
     }
 
-    // Fetch latest price separately
+    // Fetch latest price
     const latestPrice = await item
       .related('prices')
       .query()
       .orderBy('synced_at', 'desc')
+      .first()
+
+    // Calculate highs/lows from 24h history
+    const priceStats = await item
+      .related('prices')
+      .query()
+      .select(
+        item.related('prices').query().client.raw('MAX(high_price) as selling_high'),
+        item.related('prices').query().client.raw('MIN(high_price) as selling_low'),
+        item.related('prices').query().client.raw('MAX(low_price) as buying_high'),
+        item.related('prices').query().client.raw('MIN(low_price) as buying_low')
+      )
+      .whereRaw("synced_at >= datetime('now', '-24 hours')")
       .first()
 
     const highPrice = latestPrice?.highPrice ?? null
@@ -182,6 +190,14 @@ export default class ItemsController {
       highPrice != null && lowPrice != null ? highPrice - lowPrice : null
     const maxProfit =
       profitMargin != null && buyLimit != null ? profitMargin * buyLimit : null
+
+    // Extract stats (fallback to current prices if no history)
+    const sellingHigh = priceStats?.$extras.selling_high ?? highPrice
+    const sellingLow = priceStats?.$extras.selling_low ?? highPrice
+    const buyingHigh = priceStats?.$extras.buying_high ?? lowPrice
+    const buyingLow = priceStats?.$extras.buying_low ?? lowPrice
+    const overallHigh = sellingHigh
+    const overallLow = buyingLow
 
     return response.json({
       id: item.id,
@@ -197,6 +213,13 @@ export default class ItemsController {
       low_time: latestPrice?.lowTime?.toISO() ?? null,
       profit_margin: profitMargin,
       max_profit: maxProfit,
+      // 24h price stats
+      overall_high: overallHigh,
+      overall_low: overallLow,
+      buying_high: buyingHigh,
+      buying_low: buyingLow,
+      selling_high: sellingHigh,
+      selling_low: sellingLow,
       ge_tracker_url: item.geTrackerUrl,
     })
   }

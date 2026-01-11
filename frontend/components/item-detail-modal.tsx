@@ -78,24 +78,66 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
             </h2>
           </div>
 
-          {/* Prices Section */}
+          {/* Current Prices Section */}
           <div>
             <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-              Prices
+              Current Prices
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Buy Price</div>
-                <div className="font-medium">{formatNumber(item.low_price)} gp</div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="text-sm text-muted-foreground">Instant Buy</div>
+                <div className="font-medium text-lg">{formatNumber(item.low_price)} gp</div>
                 <div className="text-xs text-muted-foreground">
                   {formatRelativeTime(item.low_time)}
                 </div>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Sell Price</div>
-                <div className="font-medium">{formatNumber(item.high_price)} gp</div>
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="text-sm text-muted-foreground">Instant Sell</div>
+                <div className="font-medium text-lg">{formatNumber(item.high_price)} gp</div>
                 <div className="text-xs text-muted-foreground">
                   {formatRelativeTime(item.high_time)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 24h Price Stats Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              24h Price Range
+            </h3>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="space-y-2">
+                <div className="font-medium text-muted-foreground">Overall</div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">High:</span>
+                  <span className="text-green-600">{formatNumber(item.overall_high ?? null)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Low:</span>
+                  <span className="text-red-600">{formatNumber(item.overall_low ?? null)}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="font-medium text-muted-foreground">Buying</div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">High:</span>
+                  <span>{formatNumber(item.buying_high ?? null)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Low:</span>
+                  <span>{formatNumber(item.buying_low ?? null)}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="font-medium text-muted-foreground">Selling</div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">High:</span>
+                  <span>{formatNumber(item.selling_high ?? null)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Low:</span>
+                  <span>{formatNumber(item.selling_low ?? null)}</span>
                 </div>
               </div>
             </div>

@@ -12,6 +12,13 @@ export interface Item {
   low_time: string | null
   profit_margin: number | null
   max_profit: number | null
+  // 24h price stats
+  overall_high?: number | null
+  overall_low?: number | null
+  buying_high?: number | null
+  buying_low?: number | null
+  selling_high?: number | null
+  selling_low?: number | null
   ge_tracker_url?: string
 }
 
