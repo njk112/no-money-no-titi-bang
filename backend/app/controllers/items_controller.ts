@@ -32,17 +32,7 @@ export default class ItemsController {
       .select('item_prices.high_time')
       .select('item_prices.low_time')
       .select('item_prices.synced_at')
-      .joinRaw(`
-        LEFT JOIN item_prices ON items.id = item_prices.item_id
-        LEFT JOIN (
-          SELECT item_id, MAX(synced_at) as max_synced_at
-          FROM item_prices
-          GROUP BY item_id
-        ) latest_prices ON items.id = latest_prices.item_id
-      `)
-      .whereRaw(
-        'item_prices.synced_at IS NULL OR item_prices.synced_at = latest_prices.max_synced_at'
-      )
+      .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
 
     // Search filter (US-013)
     if (search) {

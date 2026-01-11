@@ -25,6 +25,9 @@ export default class Item extends BaseModel {
   @column()
   declare lowAlch: number | null
 
+  @column()
+  declare latestPriceId: number | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

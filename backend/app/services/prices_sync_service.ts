@@ -42,7 +42,15 @@ export default class PricesSyncService {
     }
 
     await db.transaction(async (trx) => {
-      await ItemPrice.createMany(priceRecords, { client: trx })
+      const createdPrices = await ItemPrice.createMany(priceRecords, { client: trx })
+
+      // Update items with latest_price_id for fast lookups
+      for (const price of createdPrices) {
+        await trx.rawQuery(
+          'UPDATE items SET latest_price_id = ? WHERE id = ?',
+          [price.id, price.itemId]
+        )
+      }
     })
 
     return priceRecords.length
