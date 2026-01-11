@@ -14,9 +14,9 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
       table.integer('high_price').nullable()
       table.integer('low_price').nullable()
-      table.datetime('high_time').nullable()
-      table.datetime('low_time').nullable()
-      table.datetime('synced_at').notNullable()
+      table.timestamp('high_time').nullable()
+      table.timestamp('low_time').nullable()
+      table.timestamp('synced_at').notNullable()
 
       table.index(['item_id'])
       table.index(['synced_at'])
