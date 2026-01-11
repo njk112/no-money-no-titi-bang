@@ -1,9 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import env from '#start/env'
 
 export default class CorsMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    const allowedOrigins = ['http://localhost:3000']
+    const allowedOrigins = env.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
     const origin = ctx.request.header('origin')
 
     if (origin && allowedOrigins.includes(origin)) {

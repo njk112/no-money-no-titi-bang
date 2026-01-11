@@ -41,8 +41,7 @@ Which then returns an array like
             "overallCompleted": 140,
             "buyingPrice": 2591,
             "buyingCompleted": 140,
-            "sellingCompleted": 0
-        },
+            "sellingCompleted": 0        },
         {
             "ts": 1768056000000,
             "overallPrice": 2592,
