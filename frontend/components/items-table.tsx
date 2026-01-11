@@ -30,6 +30,7 @@ function ItemIcon({ src, alt }: { src: string | null; alt: string }) {
       src={src}
       alt={alt}
       className="w-8 h-8 object-contain"
+      loading="lazy"
       onError={() => setHasError(true)}
     />
   )
