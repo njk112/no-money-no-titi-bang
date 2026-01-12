@@ -225,4 +225,114 @@ export default class RegimeController {
       segmentsCreated,
     })
   }
+
+  /**
+   * GET /api/regime/export/:itemId
+   * Export regime data in CSV or JSON format.
+   */
+  async export({ params, request, response }: HttpContext) {
+    const itemId = parseInt(params.itemId, 10)
+
+    // Verify item exists
+    const item = await Item.find(itemId)
+    if (!item) {
+      return response.notFound({ message: 'Item not found' })
+    }
+
+    const format = request.input('format', 'json')
+    const startTs = request.input('startTs')
+    const endTs = request.input('endTs')
+
+    // Fetch price history
+    const priceQuery = ItemPrice.query()
+      .where('itemId', itemId)
+      .orderBy('syncedAt', 'asc')
+      .select('syncedAt', 'highPrice', 'lowPrice')
+
+    if (startTs) {
+      priceQuery.where('syncedAt', '>=', new Date(startTs))
+    }
+    if (endTs) {
+      priceQuery.where('syncedAt', '<=', new Date(endTs))
+    }
+
+    const prices = await priceQuery
+
+    // Fetch regime segments
+    const segmentQuery = RegimeSegment.query()
+      .where('itemId', itemId)
+      .orderBy('startTs', 'asc')
+
+    if (startTs) {
+      segmentQuery.where('startTs', '>=', new Date(startTs))
+    }
+    if (endTs) {
+      segmentQuery.where('endTs', '<=', new Date(endTs))
+    }
+
+    const segments = await segmentQuery
+
+    // Build segment lookup by timestamp range
+    const getLabel = (ts: Date): string | null => {
+      for (const seg of segments) {
+        if (ts >= seg.startTs.toJSDate() && ts <= seg.endTs.toJSDate()) {
+          return seg.label
+        }
+      }
+      return null
+    }
+
+    const getFeatures = (ts: Date) => {
+      for (const seg of segments) {
+        if (ts >= seg.startTs.toJSDate() && ts <= seg.endTs.toJSDate()) {
+          return {
+            chop: seg.chop,
+            rangeNorm: seg.rangeNorm,
+            slopeNorm: seg.slopeNorm,
+            crossRate: seg.crossRate,
+          }
+        }
+      }
+      return null
+    }
+
+    // Build export data
+    const exportData = prices.map((p) => {
+      const ts = p.syncedAt.toJSDate()
+      const features = getFeatures(ts)
+      return {
+        timestamp: p.syncedAt.toISO(),
+        price: p.highPrice ?? p.lowPrice ?? null,
+        chop: features?.chop ?? null,
+        range_norm: features?.rangeNorm ?? null,
+        slope_norm: features?.slopeNorm ?? null,
+        cross_rate: features?.crossRate ?? null,
+        label: getLabel(ts),
+      }
+    })
+
+    if (format === 'csv') {
+      // Build CSV
+      const header = 'timestamp,price,chop,range_norm,slope_norm,cross_rate,label'
+      const rows = exportData.map((row) =>
+        [
+          row.timestamp,
+          row.price ?? '',
+          row.chop ?? '',
+          row.range_norm ?? '',
+          row.slope_norm ?? '',
+          row.cross_rate ?? '',
+          row.label ?? '',
+        ].join(',')
+      )
+      const csv = [header, ...rows].join('\n')
+
+      response.header('Content-Type', 'text/csv')
+      response.header('Content-Disposition', `attachment; filename="regime_${itemId}.csv"`)
+      return response.send(csv)
+    }
+
+    // Default JSON format
+    return response.json(exportData)
+  }
 }
