@@ -16,8 +16,8 @@
         "Verify in browser using dev-browser skill: enter min_volume=10000000  and min_volume=500 confirm filtered results. Click on any of the modal and check whether the daily limit reflects the filtering"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Volume parameters now sent to API. Verified with browser testing - min_volume=500 and max_volume=10000000 correctly filter results."
     }
   ]
 }

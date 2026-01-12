@@ -29,6 +29,8 @@ export function useItems(params: ItemsParams): UseItemsResult {
     if (p.min_margin !== undefined) searchParams.set('min_margin', String(p.min_margin))
     if (p.max_margin !== undefined) searchParams.set('max_margin', String(p.max_margin))
     if (p.min_buy_limit !== undefined) searchParams.set('min_buy_limit', String(p.min_buy_limit))
+    if (p.min_volume !== undefined) searchParams.set('min_volume', String(p.min_volume))
+    if (p.max_volume !== undefined) searchParams.set('max_volume', String(p.max_volume))
     if (p.members !== undefined) searchParams.set('members', String(p.members))
     if (p.sort) searchParams.set('sort', p.sort)
     if (p.order) searchParams.set('order', p.order)
