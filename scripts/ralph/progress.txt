@@ -367,3 +367,20 @@
   - Reuse confidence/features calculation logic from segment_builder
   - Band metrics calculated from current buffer prices on segment finalization
 ---
+
+## 2026-01-12 - US-034
+- What was implemented: Integration test for full classification pipeline
+- Files changed:
+  - `backend/tests/integration/regime_classification.spec.ts` (created)
+  - `backend/tests/bootstrap.ts` (modified - added integration suite setup)
+  - `backend/adonisrc.ts` (modified - added integration test suite)
+- **Learnings:**
+  - Integration suite: add to adonisrc.ts tests.suites array with files pattern and timeout
+  - Bootstrap configureSuite: use testUtils.db().migrate() for database setup
+  - Helper functions: createTestItem, createPriceHistory, toPricePoints for test data
+  - Use random IDs to avoid conflicts: `Math.floor(Math.random() * 1000000) + 1000`
+  - Clean state: delete RegimeThreshold and recreate in group.setup
+  - Teardown: delete test items and segments after each test
+  - Model returns undefined for unset nullable columns (not null)
+  - 7 tests: full flow, current_regime update, threshold recalc, data format, empty/short cases, replace
+---
