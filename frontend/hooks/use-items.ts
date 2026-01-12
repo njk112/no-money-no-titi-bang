@@ -37,6 +37,7 @@ export function useItems(params: ItemsParams, options?: UseItemsOptions): UseIte
     if (p.min_volume !== undefined) searchParams.set('min_volume', String(p.min_volume))
     if (p.max_volume !== undefined) searchParams.set('max_volume', String(p.max_volume))
     if (p.members !== undefined) searchParams.set('members', String(p.members))
+    if (p.regime) searchParams.set('regime', p.regime)
     if (p.sort) searchParams.set('sort', p.sort)
     if (p.order) searchParams.set('order', p.order)
     const qs = searchParams.toString()

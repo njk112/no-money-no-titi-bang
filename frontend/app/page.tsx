@@ -13,6 +13,13 @@ import { LastRefreshed } from '@/components/last-refreshed'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useItems } from '@/hooks/use-items'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useSettings } from '@/contexts/settings-context'
@@ -26,6 +33,7 @@ export default function Dashboard() {
   const [minMargin, setMinMargin] = useState<string>('')
   const [minVolume, setMinVolume] = useState<string>('')
   const [maxVolume, setMaxVolume] = useState<string>('')
+  const [regime, setRegime] = useState<'all' | 'RANGE_BOUND' | 'TRENDING'>('all')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
   const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly, defaultFilters } = useSettings()
@@ -52,9 +60,10 @@ export default function Dashboard() {
     min_margin: minMargin ? Number(minMargin) : undefined,
     min_volume: minVolume ? Number(minVolume) : undefined,
     max_volume: maxVolume ? Number(maxVolume) : undefined,
+    regime: regime !== 'all' ? regime : undefined,
     sort: 'profit',
     order: 'desc',
-  }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume])
+  }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume, regime])
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
 
@@ -86,6 +95,7 @@ export default function Dashboard() {
     setMinMargin(defaultFilters.minMargin)
     setMinVolume(defaultFilters.minVolume)
     setMaxVolume(defaultFilters.maxVolume)
+    setRegime('all')
     setPage(1)
   }
 
@@ -165,6 +175,25 @@ export default function Dashboard() {
                     setPage(1)
                   }}
                 />
+              </div>
+              <div>
+                <Label htmlFor="regime">Regime</Label>
+                <Select
+                  value={regime}
+                  onValueChange={(value: 'all' | 'RANGE_BOUND' | 'TRENDING') => {
+                    setRegime(value)
+                    setPage(1)
+                  }}
+                >
+                  <SelectTrigger id="regime" className="w-full">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="RANGE_BOUND">Range-Bound</SelectItem>
+                    <SelectItem value="TRENDING">Trending</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </FilterPanel>
