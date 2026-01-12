@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { Star, ExternalLink, Ban } from 'lucide-react'
 import { Modal } from '@/components/modal'
 import { LastRefreshed } from '@/components/last-refreshed'
+import { RegimeTimeline } from '@/components/regime-timeline'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useItem } from '@/hooks/use-item'
+import { useRegimeSegments } from '@/hooks/use-regime-segments'
 import { useSettings } from '@/contexts/settings-context'
 import { cn } from '@/lib/utils'
 
@@ -38,6 +40,7 @@ function formatRelativeTime(isoString: string | null): string {
 
 export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
   const { item, isLoading, error } = useItem(isOpen ? itemId : null)
+  const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
   const { favorites, toggleFavorite, toggleBlocked } = useSettings()
   const [showBlockConfirm, setShowBlockConfirm] = useState(false)
 
@@ -130,6 +133,14 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Regime Timeline Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Price Regime
+            </h3>
+            <RegimeTimeline segments={segments} isLoading={isLoadingRegime} />
           </div>
 
           {/* Current Prices Section */}
