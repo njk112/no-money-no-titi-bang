@@ -1,199 +1,622 @@
 {
-  "project": "OSRS GE Dashboard",
-  "branchName": "ralph/settings-favorites-blocked",
-  "description": "Settings page with default filter values, favorites system, and blocked items management",
+  "project": "OSRS GE Tracker",
+  "branchName": "ralph/regime-classifier",
+  "description": "Rolling-Window Regime Classifier - Automatically identify stable-band (range-bound) vs trending price regimes using scale-free features computed over rolling windows",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create localStorage persistence hook",
-      "description": "As a developer, I need a reusable hook to safely read/write localStorage with SSR compatibility so that user preferences persist across sessions.",
+      "title": "Create regime_segments database table",
+      "description": "As a developer, I need a database table to store classified regime segments per item so that regime data persists and can be queried efficiently.",
       "acceptanceCriteria": [
-        "Create frontend/hooks/use-local-storage.ts with generic type support",
-        "Handle SSR by checking for window availability before accessing localStorage",
-        "Initialize state with function to avoid hydration mismatch",
-        "Sync across browser tabs via storage event listener",
+        "Create regime_segments table with columns: id (primary key), item_id (FK to items), start_idx (integer), end_idx (integer), start_ts (datetime), end_ts (datetime), label (string: RANGE_BOUND|TRENDING), chop (float), range_norm (float), slope_norm (float), cross_rate (float), band_midpoint (float nullable), band_width_pct (float nullable), confidence_score (float nullable), created_at, updated_at",
+        "Add foreign key constraint to items table with CASCADE delete",
+        "Add index on item_id column",
+        "Add composite index on (item_id, end_ts) for time-range queries",
+        "Generate and run migration successfully",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Create settings context for global state",
-      "description": "As a developer, I need a React context to manage favorites, blocked items, and default filters globally so all components can access and modify this state.",
+      "title": "Create regime_thresholds config table",
+      "description": "As a developer, I need a table to store global regime classification thresholds so they can be configured via Settings without code changes.",
       "acceptanceCriteria": [
-        "Create frontend/lib/constants.ts with STORAGE_KEYS object and DefaultFilters type",
-        "Create frontend/contexts/settings-context.tsx with SettingsProvider component",
-        "Expose favorites as number[] with toggleFavorite(id), removeFavorite(id), clearFavorites()",
-        "Expose blockedItems as number[] with toggleBlocked(id), removeBlocked(id), clearBlocked()",
-        "Expose defaultFilters object with setDefaultFilters(), resetToSystemDefaults()",
-        "Expose showFavoritesOnly boolean with setShowFavoritesOnly()",
-        "Create useSettings() hook for consuming context",
-        "Wrap app with SettingsProvider in frontend/app/layout.tsx",
+        "Create regime_thresholds table with columns: id (primary key), chop_max (float), range_norm_max (float), slope_norm_max (float), cross_rate_min (float), window_size (integer), created_at, updated_at",
+        "Create database seeder that inserts single row with defaults: chop_max=0.25, range_norm_max=0.02, slope_norm_max=0.0005, cross_rate_min=0.08, window_size=24",
+        "Run seeder to populate default values",
+        "Generate and run migration successfully",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Add favorite star to items table",
-      "description": "As a user, I want to click a star icon on any table row to favorite/unfavorite an item so I can mark items I want to track.",
+      "title": "Add current_regime column to items table",
+      "description": "As a developer, I need to cache the current regime label on the items table for efficient dashboard filtering without joining segments.",
       "acceptanceCriteria": [
-        "Add star icon column as first column in frontend/components/items-table.tsx",
-        "Use Star icon from lucide-react",
-        "Filled yellow star (fill-yellow-500 text-yellow-500) for favorited items",
-        "Outline star (text-muted-foreground) for non-favorites with hover:text-yellow-500",
-        "Clicking star calls toggleFavorite from useSettings context",
-        "Star click uses e.stopPropagation() to not trigger row click",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add current_regime column to items table (string, nullable, values: RANGE_BOUND|TRENDING|null)",
+        "Column defaults to null for existing items",
+        "Generate and run migration successfully",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Add favorite/block buttons to item modal",
-      "description": "As a user, I want to favorite or block an item from its detail modal so I can manage items while viewing their details.",
+      "title": "Implement linear regression slope helper",
+      "description": "As a developer, I need a helper function to compute linear regression slope for the normalized slope feature calculation.",
       "acceptanceCriteria": [
-        "Add star button in modal header in frontend/components/item-detail-modal.tsx next to item name",
-        "Star toggles favorite state with visual feedback (filled yellow when favorited)",
-        "Add block button using Ban icon from lucide-react in modal header",
-        "Clicking block shows inline confirmation text 'Block this item?' with Confirm/Cancel buttons",
-        "After confirm, item is added to blockedItems via toggleBlocked()",
-        "Modal stays open after blocking (item will be hidden from list after modal closes)",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/services/regime/linear_regression.ts with computeSlope(values: number[]): number function",
+        "Implement least squares regression: slope = sum((x - xMean)(y - yMean)) / sum((x - xMean)^2)",
+        "Use 0-indexed time values (t = 0, 1, 2, ..., n-1) as x values",
+        "Handle edge case: single-element array returns 0",
+        "Handle edge case: empty array returns 0",
+        "Export function and types",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Add favorites filter toggle to dashboard",
-      "description": "As a user, I want to toggle a 'Favorites' filter on the dashboard so I can quickly see only my favorited items.",
+      "title": "Implement computeWindowFeatures utility",
+      "description": "As a developer, I need a pure function to compute scale-free features from a price window so the classifier can evaluate any price series.",
       "acceptanceCriteria": [
-        "Add 'Favorites' toggle button in frontend/app/page.tsx near search input area",
-        "Button shows Star icon, text 'Favorites'",
-        "When active: button uses default variant, star is filled",
-        "When inactive: button uses outline variant",
-        "Toggle sets showFavoritesOnly in context",
-        "When enabled, filter items to only show those in favorites array AND matching other filters",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/services/regime/window_features.ts with computeWindowFeatures(prices: number[]): WindowFeatures function",
+        "Define WindowFeatures type with: chop, rangeNorm, slopeNorm, crossRate (all numbers)",
+        "Implement chop ratio: abs(p[n-1] - p[0]) / (sum(abs(diff(p))) + eps)",
+        "Implement normalized range: (max(p) - min(p)) / (median(p) + eps)",
+        "Implement normalized slope using linear regression: abs(slope) / (median(p) + eps)",
+        "Implement mean-crossing rate: count sign changes in (p - mean(p)), return crossings / n",
+        "Use epsilon = 1e-10 to avoid division by zero in all divisions",
+        "Helper function to compute median of array",
+        "Export function and WindowFeatures type",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Hide blocked items from dashboard",
-      "description": "As a user, I want blocked items automatically hidden from the dashboard so I don't see items I'm not interested in.",
+      "title": "Implement classifyWindow function",
+      "description": "As a developer, I need a function to classify a single window as RANGE_BOUND or TRENDING based on computed features and thresholds.",
       "acceptanceCriteria": [
-        "In frontend/app/page.tsx, filter out items whose id is in blockedItems array",
-        "Apply blocked filter before rendering items in table",
-        "Blocked filtering happens client-side after API response",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/services/regime/classifier.ts",
+        "Define Thresholds type with: chopMax, rangeNormMax, slopeNormMax, crossRateMin (all numbers)",
+        "Define RegimeLabel type as 'RANGE_BOUND' | 'TRENDING'",
+        "Implement classifyWindow(features: WindowFeatures, thresholds: Thresholds): RegimeLabel",
+        "Return RANGE_BOUND only if ALL conditions met: chop < chopMax AND rangeNorm < rangeNormMax AND slopeNorm < slopeNormMax AND crossRate > crossRateMin",
+        "Return TRENDING if any condition fails",
+        "Export function and types",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Create Settings page layout and navigation",
-      "description": "As a user, I want a dedicated Settings page accessible from the navigation so I can manage all my preferences in one place.",
+      "title": "Implement rolling classifyRegime function",
+      "description": "As a developer, I need a function that applies the classifier over a rolling window across an entire price series to generate labels for each window.",
       "acceptanceCriteria": [
-        "Create frontend/app/settings/page.tsx with 'use client' directive",
-        "Page title: 'Settings' in h1",
-        "Add 'Settings' link to navLinks array in frontend/components/layout/app-layout.tsx",
-        "Settings link appears after Suggestions in navigation",
-        "Page uses max-w-2xl mx-auto for content width",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add to app/services/regime/classifier.ts",
+        "Define PricePoint type with: price (number), timestamp (Date), index (number)",
+        "Define WindowLabel type with: startIdx, endIdx, startTs (Date), endTs (Date), label (RegimeLabel), features (WindowFeatures)",
+        "Define ClassifierOptions type with: windowSize (number), stepSize (number, default 1), thresholds (Thresholds)",
+        "Implement classifyRegime(series: PricePoint[], opts: ClassifierOptions): WindowLabel[]",
+        "Iterate through series with rolling window of windowSize, advancing by stepSize",
+        "For each window position, compute features and classify",
+        "Return array of WindowLabel objects for each window",
+        "Handle case where series length < windowSize (return empty array)",
+        "Export function and types",
+        "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-008",
-      "title": "Default filter values settings section",
-      "description": "As a user, I want to configure default values for dashboard filters so I can save my preferred starting filters.",
+      "title": "Implement buildSegments function",
+      "description": "As a developer, I need a function to merge consecutive windows with the same label into contiguous segments with aggregated metadata.",
       "acceptanceCriteria": [
-        "Add 'Default Filter Values' section in Settings page using Card component",
-        "Include Input fields for: Min Price, Max Price, Min Margin, Min Volume, Max Volume",
-        "Initialize inputs from defaultFilters in context",
-        "'Save Defaults' button calls setDefaultFilters() with current input values",
-        "'Reset to System Defaults' button calls resetToSystemDefaults()",
-        "Show brief success message after saving (can use simple state toggle)",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/services/regime/segment_builder.ts",
+        "Define RegimeSegment type with: startIdx, endIdx, startTs (Date), endTs (Date), label (RegimeLabel), bandMidpoint (number | null), bandWidthPct (number | null), confidenceScore (number | null), avgFeatures (WindowFeatures)",
+        "Implement buildSegments(labels: WindowLabel[], prices: number[]): RegimeSegment[]",
+        "Merge consecutive windows with same label into single segment",
+        "For RANGE_BOUND segments: calculate bandMidpoint as median of prices in segment range, bandWidthPct as ((max-min)/midpoint) * 100",
+        "For TRENDING segments: bandMidpoint and bandWidthPct are null",
+        "Calculate confidenceScore as weighted measure of how strongly thresholds were passed (0-1 scale)",
+        "Calculate avgFeatures as average of all window features in segment",
+        "Handle empty input (return empty array)",
+        "Export function and types",
+        "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-009",
-      "title": "Add Reset to Defaults button on dashboard",
-      "description": "As a user, I want a button on the dashboard to reset filters to my saved defaults so I can quickly return to my preferred filter settings.",
+      "title": "Create RegimeSegment model",
+      "description": "As a developer, I need a Lucid ORM model for the regime_segments table to interact with the database.",
       "acceptanceCriteria": [
-        "Add 'Reset to Defaults' button in frontend/components/filter-panel.tsx",
-        "Button placed at bottom of filter panel",
-        "Clicking button sets all filter state values to corresponding defaultFilters values",
-        "Pass resetFilters callback from page.tsx to FilterPanel",
-        "If no defaults saved (empty strings), resets filters to empty",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/models/regime_segment.ts extending BaseModel",
+        "Define all columns with appropriate decorators: @column for primitives, @column.dateTime for timestamps",
+        "Add @belongsTo relationship to Item model",
+        "Update Item model to add @hasMany relationship to RegimeSegment",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-010",
-      "title": "Favorites management in Settings",
-      "description": "As a user, I want to view and manage my favorited items in Settings so I can remove favorites without finding them in the table.",
+      "title": "Create RegimeThreshold model",
+      "description": "As a developer, I need a Lucid ORM model for the regime_thresholds table to manage global configuration.",
       "acceptanceCriteria": [
-        "Add 'Favorites' section in Settings page using Card component",
-        "Fetch item details for each favorite ID using existing /api/items/:id endpoint",
-        "Display list of items showing icon (16x16), name, and 'Remove' button",
-        "'Remove' button calls removeFavorite(id)",
-        "'Clear All Favorites' button with onClick confirmation (window.confirm) calls clearFavorites()",
-        "Show 'No favorites yet' message when favorites array is empty",
-        "Show count in section header: 'Favorites (X items)'",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create app/models/regime_threshold.ts extending BaseModel",
+        "Define all columns: chopMax, rangeNormMax, slopeNormMax, crossRateMin, windowSize with appropriate decorators",
+        "Add static async method getGlobal(): Promise<RegimeThreshold> that fetches the single config row (first row)",
+        "Add static async method updateGlobal(updates: Partial<ThresholdUpdates>): Promise<RegimeThreshold> that updates and returns the config",
+        "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-011",
-      "title": "Blocked items management in Settings",
-      "description": "As a user, I want to view and manage my blocked items in Settings so I can unblock items if I change my mind.",
+      "title": "Create RegimeClassificationService",
+      "description": "As a developer, I need a service that orchestrates the full classification pipeline for an item's price history.",
       "acceptanceCriteria": [
-        "Add 'Blocked Items' section in Settings page using Card component",
-        "Fetch item details for each blocked ID using existing /api/items/:id endpoint",
-        "Display list of items showing icon (16x16), name, and 'Unblock' button",
-        "'Unblock' button calls removeBlocked(id)",
-        "'Clear All Blocked' button with onClick confirmation (window.confirm) calls clearBlocked()",
-        "Show 'No blocked items' message when blockedItems array is empty",
-        "Show count in section header: 'Blocked Items (X items)'",
+        "Create app/services/regime/regime_classification_service.ts",
+        "Implement classifyItem(itemId: number, prices: PricePoint[]): Promise<RegimeSegment[]> that runs full pipeline",
+        "Fetch thresholds from RegimeThreshold.getGlobal()",
+        "Call classifyRegime with prices and thresholds",
+        "Call buildSegments to merge consecutive labels",
+        "Return array of RegimeSegment objects (not yet persisted)",
+        "Implement saveSegments(itemId: number, segments: RegimeSegment[]): Promise<void> that upserts to database",
+        "Delete existing segments for item before inserting new ones (full replace strategy)",
+        "Update item's current_regime column with label from most recent segment (by endTs)",
+        "Export service class",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Integrate regime classification into PricesSyncService",
+      "description": "As a developer, I need the regime classifier to run automatically after each price sync so regime data stays current.",
+      "acceptanceCriteria": [
+        "Modify PricesSyncService to import RegimeClassificationService",
+        "After price update completes for an item, fetch last windowSize price points for that item",
+        "Convert price records to PricePoint array format",
+        "Call RegimeClassificationService.classifyItem() and saveSegments()",
+        "Only run classification for items that received new price data in this sync",
+        "Add try-catch to prevent classification errors from breaking price sync",
+        "Log classification summary: number of items processed, total segments created",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Create regime segments API endpoint",
+      "description": "As a developer, I need an API endpoint to fetch regime segments for an item so the frontend can display them.",
+      "acceptanceCriteria": [
+        "Create app/controllers/regime_controller.ts",
+        "Implement index method for GET /api/regime/segments/:itemId",
+        "Accept optional query params: startTs, endTs for date range filtering",
+        "Return array of segments ordered by startTs ascending",
+        "Return 404 if item not found",
+        "Add route to start/routes.ts",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Create regime thresholds API endpoints",
+      "description": "As a developer, I need API endpoints to fetch and update global regime thresholds.",
+      "acceptanceCriteria": [
+        "Add to regime_controller.ts: getThresholds method for GET /api/regime/thresholds",
+        "Return current threshold values as JSON object",
+        "Add updateThresholds method for PUT /api/regime/thresholds",
+        "Accept JSON body with optional fields: chopMax, rangeNormMax, slopeNormMax, crossRateMin, windowSize",
+        "Validate numeric ranges: all values > 0, chopMax <= 1, crossRateMin <= 1",
+        "Return 400 with error message if validation fails",
+        "Return updated thresholds on success",
+        "Add routes to start/routes.ts",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Create regime recalculate API endpoint",
+      "description": "As a developer, I need an API endpoint to trigger full recalculation of regime segments.",
+      "acceptanceCriteria": [
+        "Add to regime_controller.ts: recalculate method for POST /api/regime/recalculate",
+        "Accept optional JSON body with itemId to recalculate single item",
+        "If no itemId provided, recalculate all items with price history",
+        "Fetch price history for each item and run classification pipeline",
+        "Return JSON with: itemsProcessed (number), segmentsCreated (number)",
+        "Add route to start/routes.ts",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Create regime export API endpoint",
+      "description": "As a developer, I need an API endpoint to export regime data in CSV or JSON format for external analysis.",
+      "acceptanceCriteria": [
+        "Add to regime_controller.ts: export method for GET /api/regime/export/:itemId",
+        "Accept query param: format ('csv' | 'json', default 'json')",
+        "Accept optional query params: startTs, endTs for date range",
+        "Fetch price history and regime labels for the item",
+        "For JSON: return array of objects with timestamp, price, features (chop, rangeNorm, slopeNorm, crossRate), label",
+        "For CSV: return text/csv with header row and data rows",
+        "Set appropriate Content-Type and Content-Disposition headers",
+        "Add route to start/routes.ts",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Implement autoCalibrateThresholds utility",
+      "description": "As a developer, I need an auto-calibration utility that analyzes price distributions to suggest optimal thresholds.",
+      "acceptanceCriteria": [
+        "Create app/services/regime/calibration.ts",
+        "Define SuggestedThresholds type with threshold values plus distribution stats (min, max, p25, p50, p75) for each feature",
+        "Implement autoCalibrateThresholds(allPrices: number[][], windowSize: number): SuggestedThresholds",
+        "Compute rolling features across all provided price arrays",
+        "Collect all chop, rangeNorm, slopeNorm, crossRate values into distributions",
+        "Suggest chopMax as 25th percentile of chop values",
+        "Suggest rangeNormMax as 25th percentile of rangeNorm values",
+        "Suggest slopeNormMax as 25th percentile of slopeNorm values",
+        "Suggest crossRateMin as 75th percentile of crossRate values",
+        "Return suggested values with full distribution statistics",
+        "Export function and types",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Create calibration API endpoint",
+      "description": "As a developer, I need an API endpoint to run auto-calibration and return suggested thresholds.",
+      "acceptanceCriteria": [
+        "Add to regime_controller.ts: calibrate method for POST /api/regime/calibrate",
+        "Accept optional JSON body with itemIds array to specify items for calibration",
+        "If no itemIds provided, select random sample of 50 items with sufficient price history",
+        "Fetch price history for selected items",
+        "Run autoCalibrateThresholds with collected price data",
+        "Return suggested thresholds with distribution statistics",
+        "Add route to start/routes.ts",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Create useRegimeSegments hook",
+      "description": "As a frontend developer, I need a React hook to fetch regime segments for an item.",
+      "acceptanceCriteria": [
+        "Create frontend/hooks/use-regime-segments.ts",
+        "Define RegimeSegment type matching backend response",
+        "Implement useRegimeSegments(itemId: number | null, options?: { startTs?: Date, endTs?: Date })",
+        "Fetch from /api/regime/segments/:itemId with query params",
+        "Return { segments: RegimeSegment[], isLoading: boolean, error: Error | null, refetch: () => void }",
+        "Handle null itemId (return empty segments, no fetch)",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Create useRegimeThresholds hook",
+      "description": "As a frontend developer, I need a React hook to fetch and update global regime thresholds.",
+      "acceptanceCriteria": [
+        "Create frontend/hooks/use-regime-thresholds.ts",
+        "Define Thresholds type matching backend response",
+        "Define SuggestedThresholds type for calibration response",
+        "Implement useRegimeThresholds() hook",
+        "Fetch thresholds on mount from GET /api/regime/thresholds",
+        "Provide updateThresholds(updates) async function that calls PUT endpoint",
+        "Provide runCalibration(itemIds?) async function that calls POST /api/regime/calibrate",
+        "Return { thresholds, isLoading, error, updateThresholds, runCalibration, suggestedThresholds, isCalibrating }",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Add regime chart overlay to ItemDetailModal",
+      "description": "As a user, I want to see regime segments visualized on the price chart so I can understand when the item was range-bound vs trending.",
+      "acceptanceCriteria": [
+        "Modify ItemDetailModal to call useRegimeSegments for displayed item",
+        "Add colored background regions to existing price chart area",
+        "Use green (#22c55e with 20% opacity) for RANGE_BOUND segments",
+        "Use orange (#f97316 with 20% opacity) for TRENDING segments",
+        "Regions should span from segment startTs to endTs on x-axis, full height on y-axis",
+        "Add vertical dashed lines at segment boundaries",
+        "Add legend below chart explaining colors: green = Range-Bound, orange = Trending",
+        "Handle loading state (show skeleton or no overlay until loaded)",
         "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 11,
-      "passes": true,
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Add regime info panel to ItemDetailModal",
+      "description": "As a user, I want to see the current regime classification and key metrics for an item.",
+      "acceptanceCriteria": [
+        "Add 'Regime Analysis' section below price chart in ItemDetailModal",
+        "Display current regime label with colored badge (green for RANGE_BOUND, orange for TRENDING)",
+        "Show current window features in a grid: Chop (value), Range % (value), Slope (value), Cross Rate (value)",
+        "For RANGE_BOUND: show Band Midpoint price and Band Width % from most recent segment",
+        "Show Confidence indicator as progress bar or badge (Low/Medium/High based on confidenceScore)",
+        "Handle case where no segments exist (show 'No regime data' message)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Add regime filter to dashboard FilterPanel",
+      "description": "As a user, I want to filter dashboard items by their current regime.",
+      "acceptanceCriteria": [
+        "Add 'Regime' dropdown to FilterPanel component",
+        "Dropdown options: All (default), Range-Bound, Trending",
+        "Store selected regime filter in component state",
+        "Pass regime filter to useItems hook as query parameter",
+        "Update useItems hook to include regime param in API request",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Update ItemsController to support regime filtering",
+      "description": "As a developer, I need the items API to filter by current regime for dashboard filtering.",
+      "acceptanceCriteria": [
+        "Modify ItemsController index method to accept regime query parameter",
+        "Valid values: 'RANGE_BOUND', 'TRENDING', or omitted for all",
+        "Filter items by current_regime column when param provided",
+        "Ignore null current_regime values when filtering (items not yet classified)",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Create Regime Thresholds settings section",
+      "description": "As a user, I want to configure regime classification thresholds in Settings.",
+      "acceptanceCriteria": [
+        "Add 'Regime Classification' Card section to Settings page",
+        "Display 5 number inputs: Chop Max, Range % Max, Slope Max, Cross Rate Min, Window Size",
+        "Each input has label and helper text explaining what it controls",
+        "Inputs populated with current threshold values from useRegimeThresholds",
+        "Add 'Save Thresholds' button that calls updateThresholds",
+        "Show success toast on save, error toast on failure",
+        "Disable save button while saving (loading state)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Add auto-calibration UI to Settings",
+      "description": "As a user, I want to run auto-calibration to get suggested threshold values.",
+      "acceptanceCriteria": [
+        "Add 'Auto-Calibrate' button in Regime Classification settings section",
+        "Button shows loading spinner while calibrating",
+        "After calibration, display suggested values next to current input values (e.g., 'Suggested: 0.18')",
+        "Add 'Apply Suggestions' button that copies all suggested values to inputs",
+        "Show distribution stats (p25, p50, p75) in expandable details or tooltip for each threshold",
+        "Disable calibrate button while calibration in progress",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Add recalculate button to Settings",
+      "description": "As a user, I want to trigger a full recalculation of regime segments after changing thresholds.",
+      "acceptanceCriteria": [
+        "Add 'Recalculate All Segments' button in Regime Classification settings",
+        "Button calls POST /api/regime/recalculate",
+        "Show loading state with 'Recalculating...' text while in progress",
+        "On success, show toast with 'Recalculated X items, Y segments created'",
+        "On error, show error toast",
+        "Add confirmation dialog before recalculating ('This may take a while. Continue?')",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Add debug export button to ItemDetailModal",
+      "description": "As a user, I want to export regime classification data for external analysis.",
+      "acceptanceCriteria": [
+        "Add 'Export Data' button in Regime Analysis section of ItemDetailModal",
+        "Add dropdown or toggle to select format: CSV or JSON",
+        "On click, fetch from /api/regime/export/:itemId with selected format",
+        "Trigger browser download with filename: {itemName}-regime-{date}.{format}",
+        "Show loading state while fetching",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Write unit tests for linear regression helper",
+      "description": "As a developer, I need tests for the linear regression slope calculation.",
+      "acceptanceCriteria": [
+        "Create tests/unit/regime/linear_regression.spec.ts",
+        "Test positive slope: [1, 2, 3, 4, 5] returns positive value",
+        "Test negative slope: [5, 4, 3, 2, 1] returns negative value",
+        "Test flat line: [3, 3, 3, 3] returns 0",
+        "Test single element: [5] returns 0",
+        "Test empty array: [] returns 0",
+        "Test two elements: [1, 3] returns correct slope (1)",
+        "All tests pass"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Write unit tests for computeWindowFeatures",
+      "description": "As a developer, I need comprehensive tests for the window features calculation.",
+      "acceptanceCriteria": [
+        "Create tests/unit/regime/window_features.spec.ts",
+        "Test chop ratio with trending series [1,2,3,4,5]: should be high (close to 1)",
+        "Test chop ratio with oscillating series [1,3,1,3,1]: should be low (close to 0)",
+        "Test rangeNorm with tight band [100,101,100,101]: should be small",
+        "Test rangeNorm with wide band [100,150,100,150]: should be larger",
+        "Test slopeNorm with flat series: should be near zero",
+        "Test slopeNorm with trending series: should be higher",
+        "Test crossRate with oscillating series: should be high",
+        "Test crossRate with trending series: should be low",
+        "Test edge case: constant prices [5,5,5,5]",
+        "All tests pass"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Write unit tests for classifyWindow and classifyRegime",
+      "description": "As a developer, I need tests for the classifier to verify correct labeling.",
+      "acceptanceCriteria": [
+        "Create tests/unit/regime/classifier.spec.ts",
+        "Test classifyWindow returns RANGE_BOUND when all thresholds met",
+        "Test classifyWindow returns TRENDING when any threshold fails",
+        "Test classifyRegime with sinusoidal series: most windows RANGE_BOUND",
+        "Test classifyRegime with linear trend: all windows TRENDING",
+        "Test classifyRegime with step change: identifies transition",
+        "Test classifyRegime with empty series: returns empty array",
+        "Test classifyRegime with series shorter than window: returns empty array",
+        "Test threshold boundary conditions (exactly at threshold)",
+        "All tests pass"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Write unit tests for buildSegments",
+      "description": "As a developer, I need tests for segment merging and metadata calculation.",
+      "acceptanceCriteria": [
+        "Create tests/unit/regime/segment_builder.spec.ts",
+        "Test merging consecutive RANGE_BOUND windows into one segment",
+        "Test merging consecutive TRENDING windows into one segment",
+        "Test segment boundary at label transition",
+        "Test multiple segments: RB-TR-RB creates 3 segments",
+        "Test bandMidpoint calculation for RANGE_BOUND segment",
+        "Test bandWidthPct calculation",
+        "Test confidenceScore is between 0 and 1",
+        "Test empty input returns empty array",
+        "All tests pass"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "Implement streaming classification support",
+      "description": "As a developer, I need the classifier to efficiently handle real-time streaming price updates.",
+      "acceptanceCriteria": [
+        "Create app/services/regime/streaming_classifier.ts",
+        "Define StreamState type to hold rolling window state: prices buffer, current features, current label",
+        "Implement initStreamState(windowSize: number, thresholds: Thresholds): StreamState",
+        "Implement updateStream(state: StreamState, newPrice: PricePoint): { state: StreamState, labelChanged: boolean, segment?: RegimeSegment }",
+        "Maintain rolling window buffer of last windowSize prices",
+        "Recompute features incrementally where possible (O(1) for some metrics)",
+        "Return new segment only when label changes from previous",
+        "Export functions and types",
+        "Typecheck passes"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "Write integration test for classification pipeline",
+      "description": "As a developer, I need an integration test verifying the full pipeline.",
+      "acceptanceCriteria": [
+        "Create tests/integration/regime_classification.spec.ts",
+        "Test full flow: create item, add price history, run classification, verify segments in database",
+        "Test that current_regime on item is updated correctly",
+        "Test threshold update triggers correct recalculation",
+        "Test API endpoints return expected data format",
+        "Use test database with proper setup/teardown",
+        "All tests pass"
+      ],
+      "priority": 34,
+      "passes": false,
       "notes": ""
     }
   ]
