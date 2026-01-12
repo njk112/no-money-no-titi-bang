@@ -9,7 +9,7 @@
 
 ---
 
-## 2026-01-11 - US-001
+## 2026-01-11 - US-001 (Volume Filter)
 - What was implemented: Added min_volume and max_volume parameters to the buildQueryString function in use-items.ts
 - Files changed: frontend/hooks/use-items.ts
 - **Learnings:**
@@ -17,5 +17,63 @@
   - ItemsParams type in lib/types.ts already had min_volume/max_volume defined, just needed to wire them up
   - String() conversion handles large numbers correctly (no scientific notation)
   - Browser testing with dev-browser confirms volume filtering works end-to-end
+---
+
+## 2026-01-12 - US-001 (Prices Sync Scheduler)
+- What was implemented: Added separate price sync scheduler running every minute
+- Files changed: backend/start/scheduler.ts
+- **Learnings:**
+  - node-cron supports multiple schedule registrations in the same file
+  - env.get() second parameter provides default value for environment variables
+  - Scheduler pattern: validate cron expression first with cron.validate() before scheduling
+  - Pre-existing type errors in items_sync_service.ts are unrelated to scheduler changes
+---
+
+## 2026-01-12 - US-002 (Sync Status API Endpoint)
+- What was implemented: Created GET /api/sync/status endpoint returning last sync timestamp
+- Files changed: backend/app/controllers/sync_controller.ts, backend/start/routes.ts
+- **Learnings:**
+  - AdonisJS controller pattern: lazy import with `const SyncController = () => import('#controllers/sync_controller')`
+  - DateTime column values from Lucid have .toISO() method for serialization
+  - Use optional chaining (?.) when accessing model properties that may be null
+---
+
+## 2026-01-12 - US-003 (useSyncStatus Hook and useItems Polling)
+- What was implemented: Created useSyncStatus hook with 60s polling, added pollInterval option to useItems
+- Files changed: frontend/hooks/use-sync-status.ts (new), frontend/hooks/use-items.ts
+- **Learnings:**
+  - Use `useRef<ReturnType<typeof setInterval> | null>(null)` for interval refs in React
+  - Always clean up intervals in useEffect return function
+  - Optional parameters in hooks can use second options object: `useItems(params, { pollInterval })`
+---
+
+## 2026-01-12 - US-004 (LastRefreshed Component)
+- What was implemented: Created LastRefreshed component, added to dashboard header, enabled 60s polling
+- Files changed: frontend/components/last-refreshed.tsx (new), frontend/app/page.tsx
+- **Learnings:**
+  - Relative time formatting: use Date.getTime() for ms comparison, floor division for units
+  - lucide-react RefreshCw icon available in project
+  - Header layout: flex items-center justify-between for title/status alignment
+  - Browser verified: component displays correctly in header with proper styling
+---
+
+## 2026-01-12 - US-005 (LastRefreshed in Item Modal)
+- What was implemented: Added LastRefreshed component to bottom of item detail modal
+- Files changed: frontend/components/item-detail-modal.tsx
+- **Learnings:**
+  - Modal already had formatRelativeTime function, but LastRefreshed component provides consistent display
+  - Use pt-4 border-t for visual separation at bottom of modal sections
+  - Components can be easily reused across different views
+---
+
+## 2026-01-12 - US-006 (Manual Refresh Button)
+- What was implemented: Added rate-limited manual refresh button to LastRefreshed component
+- Files changed: frontend/components/last-refreshed.tsx
+- **Learnings:**
+  - Cooldown countdown: use setInterval with 1s tick and cleanup in useEffect
+  - Button title attribute provides native tooltip on hover
+  - cn() utility from shadcn combines Tailwind classes conditionally
+  - animate-spin class provides CSS animation for spinning icon
+  - Browser test confirmed: button disabled state, title change to "Wait Xs", and visual feedback all working
 ---
 
