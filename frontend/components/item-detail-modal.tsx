@@ -2,6 +2,7 @@
 
 import { Star, ExternalLink } from 'lucide-react'
 import { Modal } from '@/components/modal'
+import { LastRefreshed } from '@/components/last-refreshed'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useItem } from '@/hooks/use-item'
@@ -214,6 +215,11 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
               </Button>
             </div>
           )}
+
+          {/* Last Refreshed */}
+          <div className="pt-4 border-t">
+            <LastRefreshed />
+          </div>
         </div>
       )}
     </Modal>
