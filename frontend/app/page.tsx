@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { Star } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { FilterPanel } from '@/components/filter-panel'
 import { ItemsTable } from '@/components/items-table'
@@ -11,8 +12,10 @@ import { ItemDetailModal } from '@/components/item-detail-modal'
 import { LastRefreshed } from '@/components/last-refreshed'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { useItems } from '@/hooks/use-items'
 import { useDebounce } from '@/hooks/use-debounce'
+import { useSettings } from '@/contexts/settings-context'
 import type { ItemsParams } from '@/lib/types'
 
 export default function Dashboard() {
@@ -25,7 +28,21 @@ export default function Dashboard() {
   const [maxVolume, setMaxVolume] = useState<string>('')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
+  const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly, defaultFilters } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
+
+  // Initialize filters with default values from settings on mount
+  const [filtersInitialized, setFiltersInitialized] = useState(false)
+  useEffect(() => {
+    if (!filtersInitialized && defaultFilters) {
+      setMinPrice(defaultFilters.minPrice)
+      setMaxPrice(defaultFilters.maxPrice)
+      setMinMargin(defaultFilters.minMargin)
+      setMinVolume(defaultFilters.minVolume)
+      setMaxVolume(defaultFilters.maxVolume)
+      setFiltersInitialized(true)
+    }
+  }, [defaultFilters, filtersInitialized])
 
   const params: ItemsParams = useMemo(() => ({
     page,
@@ -41,6 +58,15 @@ export default function Dashboard() {
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
 
+  // Filter out blocked items and optionally filter to favorites only
+  const filteredItems = useMemo(() => {
+    let result = items.filter((item) => !blockedItems.includes(item.id))
+    if (showFavoritesOnly) {
+      result = result.filter((item) => favorites.includes(item.id))
+    }
+    return result
+  }, [items, blockedItems, favorites, showFavoritesOnly])
+
   const handleSearchChange = (value: string) => {
     setSearch(value)
     setPage(1) // Reset to page 1 on search
@@ -54,6 +80,15 @@ export default function Dashboard() {
     setSelectedItemId(null)
   }
 
+  const handleResetFilters = () => {
+    setMinPrice(defaultFilters.minPrice)
+    setMaxPrice(defaultFilters.maxPrice)
+    setMinMargin(defaultFilters.minMargin)
+    setMinVolume(defaultFilters.minVolume)
+    setMaxVolume(defaultFilters.maxVolume)
+    setPage(1)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,7 +99,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
         <aside className="w-full lg:w-64 shrink-0">
-          <FilterPanel>
+          <FilterPanel onResetFilters={handleResetFilters}>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="minPrice">Min Price</Label>
@@ -137,12 +172,26 @@ export default function Dashboard() {
 
         {/* Main content */}
         <div className="flex-1 space-y-4">
-          {/* Search */}
-          <SearchInput
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search items..."
-          />
+          {/* Search and Favorites Toggle */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SearchInput
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Search items..."
+              />
+            </div>
+            <Button
+              variant={showFavoritesOnly ? 'default' : 'outline'}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className="shrink-0"
+            >
+              <Star
+                className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-current' : ''}`}
+              />
+              Favorites
+            </Button>
+          </div>
 
           {/* Table */}
           <div className="rounded-lg border">
@@ -151,7 +200,7 @@ export default function Dashboard() {
             ) : error ? (
               <ErrorState message={error.message} onRetry={refetch} />
             ) : (
-              <ItemsTable items={items} onItemClick={handleItemClick} />
+              <ItemsTable items={filteredItems} onItemClick={handleItemClick} />
             )}
           </div>
 

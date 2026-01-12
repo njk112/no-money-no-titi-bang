@@ -16,6 +16,7 @@ const SyncController = () => import('#controllers/sync_controller')
 router.on('/').render('pages/home')
 
 router.get('/api/items', [ItemsController, 'index'])
+router.get('/api/items/batch', [ItemsController, 'batch'])
 router.get('/api/items/:id', [ItemsController, 'show'])
 router.get('/api/suggestions', [SuggestionsController, 'index'])
 router.get('/api/sync/status', [SyncController, 'status'])

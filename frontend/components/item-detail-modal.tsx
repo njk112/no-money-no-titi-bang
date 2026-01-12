@@ -1,11 +1,13 @@
 'use client'
 
-import { Star, ExternalLink } from 'lucide-react'
+import { useState } from 'react'
+import { Star, ExternalLink, Ban } from 'lucide-react'
 import { Modal } from '@/components/modal'
 import { LastRefreshed } from '@/components/last-refreshed'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useItem } from '@/hooks/use-item'
+import { useSettings } from '@/contexts/settings-context'
 import { cn } from '@/lib/utils'
 
 interface ItemDetailModalProps {
@@ -36,6 +38,10 @@ function formatRelativeTime(isoString: string | null): string {
 
 export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
   const { item, isLoading, error } = useItem(isOpen ? itemId : null)
+  const { favorites, toggleFavorite, toggleBlocked } = useSettings()
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
+
+  const isFavorited = itemId ? favorites.includes(itemId) : false
 
   if (!isOpen) return null
 
@@ -71,12 +77,59 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
             ) : (
               <div className="w-16 h-16 bg-muted rounded" />
             )}
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              {item.name}
-              {item.members && (
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {item.name}
+                  {item.members && (
+                    <span className="text-xs text-yellow-600 font-medium px-1.5 py-0.5 bg-yellow-100 rounded">P2P</span>
+                  )}
+                </h2>
+                <button
+                  onClick={() => toggleFavorite(item.id)}
+                  className="p-1 hover:bg-muted rounded"
+                  title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Star
+                    className={cn(
+                      'w-5 h-5 transition-colors',
+                      isFavorited
+                        ? 'fill-yellow-500 text-yellow-500'
+                        : 'text-muted-foreground hover:text-yellow-500'
+                    )}
+                  />
+                </button>
+                <button
+                  onClick={() => setShowBlockConfirm(true)}
+                  className="p-1 hover:bg-muted rounded"
+                  title="Block item"
+                >
+                  <Ban className="w-5 h-5 text-muted-foreground hover:text-red-500 transition-colors" />
+                </button>
+              </div>
+              {showBlockConfirm && (
+                <div className="flex items-center gap-2 mt-2 text-sm">
+                  <span className="text-muted-foreground">Block this item?</span>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      toggleBlocked(item.id)
+                      setShowBlockConfirm(false)
+                    }}
+                  >
+                    Confirm
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowBlockConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               )}
-            </h2>
+            </div>
           </div>
 
           {/* Current Prices Section */}

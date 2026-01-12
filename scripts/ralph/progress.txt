@@ -5,7 +5,116 @@
 - Backend: AdonisJS with Lucid ORM, node-cron for scheduling
 - API: REST endpoints at /api/*
 - Hooks pattern: Custom React hooks in frontend/hooks/
-- State: Local useState (no global state management yet)
+- State: SettingsContext for favorites, blocked items, default filters (global state)
+
+- Hooks pattern: Use 'use client' directive at top of hook files
+- TypeScript: Use npx tsc --noEmit for type checking (no npm run typecheck script)
 
 ---
 
+## 2026-01-12 - US-001
+- What was implemented: Created reusable localStorage hook with generic type support
+- Files changed: frontend/hooks/use-local-storage.ts (created)
+- **Learnings:**
+  - Hooks in this codebase use 'use client' directive
+  - SSR compatibility requires checking `typeof window === 'undefined'`
+  - Use function initializer for useState to avoid hydration mismatch
+  - Storage event listener syncs state across browser tabs
+---
+
+## 2026-01-12 - US-002
+- What was implemented: Created global settings context with favorites, blocked items, and default filters
+- Files changed:
+  - frontend/lib/constants.ts (created) - STORAGE_KEYS and DefaultFilters type
+  - frontend/contexts/settings-context.tsx (created) - SettingsProvider and useSettings hook
+  - frontend/components/providers.tsx (created) - Client-side wrapper for providers
+  - frontend/app/layout.tsx (modified) - Wrapped app with Providers
+- **Learnings:**
+  - Server Components (layout.tsx) need client-side provider wrappers
+  - Create a Providers component to wrap client-only context providers
+  - useCallback for stable function references in context
+---
+
+## 2026-01-12 - US-003
+- What was implemented: Added favorite star column as first column in items table
+- Files changed: frontend/components/items-table.tsx (modified)
+- **Learnings:**
+  - Use e.stopPropagation() to prevent click bubbling to row
+  - cn() helper for conditional class application (fill-yellow-500 for favorited)
+  - Star icon already imported in file for members badge, reused for favorites
+---
+
+## 2026-01-12 - US-004
+- What was implemented: Added favorite star and block buttons to item detail modal
+- Files changed: frontend/components/item-detail-modal.tsx (modified)
+- **Learnings:**
+  - Ban icon from lucide-react for block functionality
+  - Inline confirmation pattern: show text + buttons instead of window.confirm
+  - Modal stays open after action, doesn't auto-close
+  - Local state (showBlockConfirm) for confirmation UI
+---
+
+## 2026-01-12 - US-005
+- What was implemented: Added favorites filter toggle button to dashboard
+- Files changed: frontend/app/page.tsx (modified)
+- **Learnings:**
+  - Button variant prop for toggle states (default vs outline)
+  - useMemo for client-side filtering after API response
+  - fill-current class for SVG fill based on parent text color
+---
+
+## 2026-01-12 - US-006
+- What was implemented: Filtering out blocked items from dashboard
+- Files changed: frontend/app/page.tsx (modified)
+- **Learnings:**
+  - Apply blocked items filter first, then favorites filter
+  - Client-side filtering with useMemo for efficient re-renders
+---
+
+## 2026-01-12 - US-007
+- What was implemented: Created Settings page layout with navigation link
+- Files changed:
+  - frontend/app/settings/page.tsx (created)
+  - frontend/components/layout/app-layout.tsx (modified) - Added Settings to navLinks
+- **Learnings:**
+  - Next.js app router uses folder structure for routes (app/settings/page.tsx)
+  - navLinks array in app-layout is reused for both desktop and mobile nav
+---
+
+## 2026-01-12 - US-008
+- What was implemented: Default filter values settings section with save/reset functionality
+- Files changed: frontend/app/settings/page.tsx (modified)
+- **Learnings:**
+  - Card components (CardHeader, CardContent, CardTitle) for consistent section styling
+  - Local state mirrors context state for form editing
+  - setTimeout for temporary success messages
+---
+
+## 2026-01-12 - US-009
+- What was implemented: Reset to Defaults button in filter panel
+- Files changed:
+  - frontend/components/filter-panel.tsx (modified) - Added optional onResetFilters prop
+  - frontend/app/page.tsx (modified) - Added handleResetFilters callback
+- **Learnings:**
+  - Optional callback props with conditional rendering (onResetFilters &&)
+  - FilterPanel displays button in both desktop and mobile views
+---
+
+## 2026-01-12 - US-010
+- What was implemented: Favorites management section in Settings page
+- Files changed: frontend/app/settings/page.tsx (modified)
+- **Learnings:**
+  - Promise.all for fetching multiple items in parallel
+  - Type guard (item): item is Item for filtering null values
+  - window.confirm for simple confirmation dialogs
+---
+
+## 2026-01-12 - US-011
+- What was implemented: Blocked items management section in Settings page
+- Files changed: frontend/app/settings/page.tsx (modified)
+- **Learnings:**
+  - Same pattern as favorites section - reusable pattern for list management
+  - "Unblock" vs "Remove" button text for semantic clarity
+---
+
+ALL STORIES COMPLETE

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 const navLinks = [
   { href: '/', label: 'Dashboard' },
   { href: '/suggestions', label: 'Suggestions' },
+  { href: '/settings', label: 'Settings' },
 ]
 
 interface AppLayoutProps {

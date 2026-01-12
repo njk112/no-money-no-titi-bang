@@ -157,6 +157,51 @@ export default class ItemsController {
     })
   }
 
+  async batch({ request, response }: HttpContext) {
+    const idsParam = String(request.input('ids', ''))
+    const ids = idsParam
+      .split(',')
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !isNaN(id))
+      .slice(0, 100) // Limit to 100 items
+
+    if (ids.length === 0) {
+      return response.json([])
+    }
+
+    const items = await Item.query()
+      .select(
+        'items.id',
+        'items.name',
+        'items.icon_filename',
+        'items.buy_limit',
+        'items.members'
+      )
+      .select('item_prices.high_price', 'item_prices.low_price')
+      .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
+      .whereIn('items.id', ids)
+
+    const data = items.map((item) => {
+      const highPrice = item.$extras.high_price
+      const lowPrice = item.$extras.low_price
+      const profitMargin =
+        highPrice != null && lowPrice != null ? highPrice - lowPrice : null
+
+      return {
+        id: item.id,
+        name: item.name,
+        icon_url: item.iconUrl,
+        buy_limit: item.buyLimit,
+        members: item.members,
+        high_price: highPrice ?? null,
+        low_price: lowPrice ?? null,
+        profit_margin: profitMargin,
+      }
+    })
+
+    return response.json(data)
+  }
+
   async show({ params, response }: HttpContext) {
     // Fetch item without join to avoid id collision
     const item = await Item.find(params.id)
