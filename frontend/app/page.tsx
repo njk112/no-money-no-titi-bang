@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Star } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { FilterPanel } from '@/components/filter-panel'
@@ -30,6 +30,19 @@ export default function Dashboard() {
 
   const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly, defaultFilters } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
+
+  // Initialize filters with default values from settings on mount
+  const [filtersInitialized, setFiltersInitialized] = useState(false)
+  useEffect(() => {
+    if (!filtersInitialized && defaultFilters) {
+      setMinPrice(defaultFilters.minPrice)
+      setMaxPrice(defaultFilters.maxPrice)
+      setMinMargin(defaultFilters.minMargin)
+      setMinVolume(defaultFilters.minVolume)
+      setMaxVolume(defaultFilters.maxVolume)
+      setFiltersInitialized(true)
+    }
+  }, [defaultFilters, filtersInitialized])
 
   const params: ItemsParams = useMemo(() => ({
     page,
