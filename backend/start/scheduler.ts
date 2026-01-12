@@ -5,8 +5,17 @@ import ItemsSyncService from '#services/items_sync_service'
 import PricesSyncService from '#services/prices_sync_service'
 
 const syncCron = env.get('SYNC_CRON', '0 0 * * *')
+const pricesSyncCron = env.get('PRICES_SYNC_CRON', '* * * * *')
+
+let isSyncing = false
+let isPricesSyncing = false
 
 async function runSync() {
+  if (isSyncing) {
+    logger.warn('Sync already in progress, skipping...')
+    return
+  }
+  isSyncing = true
   const startTime = Date.now()
   logger.info('Scheduled sync starting...')
 
@@ -26,6 +35,30 @@ async function runSync() {
   } catch (error) {
     logger.error('Scheduled sync failed')
     logger.error(error instanceof Error ? error.message : String(error))
+  } finally {
+    isSyncing = false
+  }
+}
+
+async function runPricesSync() {
+  if (isPricesSyncing) {
+    logger.warn('Prices sync already in progress, skipping...')
+    return
+  }
+  isPricesSyncing = true
+  const startTime = Date.now()
+  logger.info('Scheduled prices sync starting...')
+
+  try {
+    const pricesSyncService = new PricesSyncService()
+    const pricesCount = await pricesSyncService.syncPrices()
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
+    logger.info(`Scheduled prices sync completed: ${pricesCount} prices in ${totalTime}s`)
+  } catch (error) {
+    logger.error('Scheduled prices sync failed')
+    logger.error(error instanceof Error ? error.message : String(error))
+  } finally {
+    isPricesSyncing = false
   }
 }
 
@@ -34,4 +67,11 @@ if (cron.validate(syncCron)) {
   logger.info(`Scheduler initialized with cron: ${syncCron}`)
 } else {
   logger.warn(`Invalid SYNC_CRON value: ${syncCron}. Scheduler not started.`)
+}
+
+if (cron.validate(pricesSyncCron)) {
+  cron.schedule(pricesSyncCron, runPricesSync)
+  logger.info(`Prices sync scheduler initialized with cron: ${pricesSyncCron}`)
+} else {
+  logger.warn(`Invalid PRICES_SYNC_CRON value: ${pricesSyncCron}. Prices sync scheduler not started.`)
 }

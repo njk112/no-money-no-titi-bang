@@ -8,6 +8,7 @@ import { TableSkeleton } from '@/components/table-skeleton'
 import { ErrorState } from '@/components/error-state'
 import { PaginationControls } from '@/components/pagination-controls'
 import { ItemDetailModal } from '@/components/item-detail-modal'
+import { LastRefreshed } from '@/components/last-refreshed'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useItems } from '@/hooks/use-items'
@@ -38,7 +39,7 @@ export default function Dashboard() {
     order: 'desc',
   }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume])
 
-  const { items, totalPages, isLoading, error, refetch } = useItems(params)
+  const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -55,7 +56,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">OSRS GE Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">OSRS GE Dashboard</h1>
+        <LastRefreshed />
+      </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
