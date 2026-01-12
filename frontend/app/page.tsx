@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [maxVolume, setMaxVolume] = useState<string>('')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
-  const { favorites, showFavoritesOnly, setShowFavoritesOnly } = useSettings()
+  const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
 
   const params: ItemsParams = useMemo(() => ({
@@ -45,11 +45,14 @@ export default function Dashboard() {
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
 
-  // Filter items to show only favorites when enabled
+  // Filter out blocked items and optionally filter to favorites only
   const filteredItems = useMemo(() => {
-    if (!showFavoritesOnly) return items
-    return items.filter((item) => favorites.includes(item.id))
-  }, [items, favorites, showFavoritesOnly])
+    let result = items.filter((item) => !blockedItems.includes(item.id))
+    if (showFavoritesOnly) {
+      result = result.filter((item) => favorites.includes(item.id))
+    }
+    return result
+  }, [items, blockedItems, favorites, showFavoritesOnly])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
