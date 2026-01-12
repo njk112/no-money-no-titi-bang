@@ -45,14 +45,10 @@ export default function SettingsPage() {
     }
 
     setLoadingFavorites(true)
-    Promise.all(
-      favorites.map((id) =>
-        api.get<Item>(`/api/items/${id}`).catch(() => null)
-      )
-    )
-      .then((items) => {
-        setFavoriteItems(items.filter((item): item is Item => item !== null))
-      })
+    api
+      .get<Item[]>(`/api/items/batch?ids=${favorites.join(',')}`)
+      .then((items) => setFavoriteItems(items))
+      .catch(() => setFavoriteItems([]))
       .finally(() => setLoadingFavorites(false))
   }, [favorites])
 
@@ -64,14 +60,10 @@ export default function SettingsPage() {
     }
 
     setLoadingBlocked(true)
-    Promise.all(
-      blockedItems.map((id) =>
-        api.get<Item>(`/api/items/${id}`).catch(() => null)
-      )
-    )
-      .then((items) => {
-        setBlockedItemDetails(items.filter((item): item is Item => item !== null))
-      })
+    api
+      .get<Item[]>(`/api/items/batch?ids=${blockedItems.join(',')}`)
+      .then((items) => setBlockedItemDetails(items))
+      .catch(() => setBlockedItemDetails([]))
       .finally(() => setLoadingBlocked(false))
   }, [blockedItems])
 
