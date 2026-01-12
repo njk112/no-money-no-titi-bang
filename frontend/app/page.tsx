@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [maxVolume, setMaxVolume] = useState<string>('')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
-  const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly } = useSettings()
+  const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly, defaultFilters } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
 
   const params: ItemsParams = useMemo(() => ({
@@ -67,6 +67,15 @@ export default function Dashboard() {
     setSelectedItemId(null)
   }
 
+  const handleResetFilters = () => {
+    setMinPrice(defaultFilters.minPrice)
+    setMaxPrice(defaultFilters.maxPrice)
+    setMinMargin(defaultFilters.minMargin)
+    setMinVolume(defaultFilters.minVolume)
+    setMaxVolume(defaultFilters.maxVolume)
+    setPage(1)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -77,7 +86,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
         <aside className="w-full lg:w-64 shrink-0">
-          <FilterPanel>
+          <FilterPanel onResetFilters={handleResetFilters}>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="minPrice">Min Price</Label>

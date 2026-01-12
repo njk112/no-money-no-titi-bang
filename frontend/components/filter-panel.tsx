@@ -12,9 +12,10 @@ import {
 
 interface FilterPanelProps {
   children: React.ReactNode
+  onResetFilters?: () => void
 }
 
-export function FilterPanel({ children }: FilterPanelProps) {
+export function FilterPanel({ children, onResetFilters }: FilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -24,7 +25,18 @@ export function FilterPanel({ children }: FilterPanelProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">{children}</CardContent>
+        <CardContent className="space-y-4">
+          {children}
+          {onResetFilters && (
+            <Button
+              variant="outline"
+              className="w-full mt-4"
+              onClick={onResetFilters}
+            >
+              Reset to Defaults
+            </Button>
+          )}
+        </CardContent>
       </Card>
 
       {/* Mobile: collapsible */}
@@ -44,7 +56,18 @@ export function FilterPanel({ children }: FilterPanelProps) {
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="space-y-4 pt-0">{children}</CardContent>
+            <CardContent className="space-y-4 pt-0">
+              {children}
+              {onResetFilters && (
+                <Button
+                  variant="outline"
+                  className="w-full mt-4"
+                  onClick={onResetFilters}
+                >
+                  Reset to Defaults
+                </Button>
+              )}
+            </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
