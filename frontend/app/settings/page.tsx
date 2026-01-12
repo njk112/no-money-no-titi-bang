@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/contexts/settings-context'
+import { useRegimeThresholds } from '@/hooks/use-regime-thresholds'
 import { SYSTEM_DEFAULT_FILTERS } from '@/lib/constants'
 import { api } from '@/lib/api'
 import type { Item } from '@/lib/types'
@@ -29,6 +30,34 @@ export default function SettingsPage() {
   const [minVolume, setMinVolume] = useState(defaultFilters.minVolume)
   const [maxVolume, setMaxVolume] = useState(defaultFilters.maxVolume)
   const [showSaved, setShowSaved] = useState(false)
+
+  // Regime thresholds
+  const {
+    thresholds,
+    isLoading: isLoadingThresholds,
+    error: thresholdsError,
+    updateThresholds,
+  } = useRegimeThresholds()
+
+  const [chopMax, setChopMax] = useState('')
+  const [rangeNormMax, setRangeNormMax] = useState('')
+  const [slopeNormMax, setSlopeNormMax] = useState('')
+  const [crossRateMin, setCrossRateMin] = useState('')
+  const [windowSize, setWindowSize] = useState('')
+  const [isSavingThresholds, setIsSavingThresholds] = useState(false)
+  const [thresholdsSaved, setThresholdsSaved] = useState(false)
+  const [thresholdsSaveError, setThresholdsSaveError] = useState<string | null>(null)
+
+  // Sync threshold inputs when thresholds load
+  useEffect(() => {
+    if (thresholds) {
+      setChopMax(String(thresholds.chop_max))
+      setRangeNormMax(String(thresholds.range_norm_max))
+      setSlopeNormMax(String(thresholds.slope_norm_max))
+      setCrossRateMin(String(thresholds.cross_rate_min))
+      setWindowSize(String(thresholds.window_size))
+    }
+  }, [thresholds])
 
   // Sync local state when defaultFilters changes (e.g., from another tab)
   useEffect(() => {
@@ -110,6 +139,26 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveThresholds = async () => {
+    setIsSavingThresholds(true)
+    setThresholdsSaveError(null)
+    try {
+      await updateThresholds({
+        chop_max: parseFloat(chopMax),
+        range_norm_max: parseFloat(rangeNormMax),
+        slope_norm_max: parseFloat(slopeNormMax),
+        cross_rate_min: parseFloat(crossRateMin),
+        window_size: parseInt(windowSize, 10),
+      })
+      setThresholdsSaved(true)
+      setTimeout(() => setThresholdsSaved(false), 2000)
+    } catch {
+      setThresholdsSaveError('Failed to save thresholds')
+    } finally {
+      setIsSavingThresholds(false)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -184,6 +233,113 @@ export default function SettingsPage() {
           </div>
           {showSaved && (
             <p className="text-sm text-green-600">Defaults saved successfully!</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Regime Classification Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Regime Classification</CardTitle>
+          <CardDescription>
+            Configure thresholds for classifying price regimes as range-bound or trending.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingThresholds ? (
+            <p className="text-muted-foreground">Loading thresholds...</p>
+          ) : thresholdsError ? (
+            <p className="text-destructive">Failed to load thresholds</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="chopMax">Chop Max</Label>
+                  <Input
+                    id="chopMax"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.25"
+                    value={chopMax}
+                    onChange={(e) => setChopMax(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum chop ratio for range-bound (0-1)
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="rangeNormMax">Range % Max</Label>
+                  <Input
+                    id="rangeNormMax"
+                    type="number"
+                    step="0.001"
+                    placeholder="0.02"
+                    value={rangeNormMax}
+                    onChange={(e) => setRangeNormMax(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum normalized range for range-bound
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="slopeNormMax">Slope Max</Label>
+                  <Input
+                    id="slopeNormMax"
+                    type="number"
+                    step="0.0001"
+                    placeholder="0.0005"
+                    value={slopeNormMax}
+                    onChange={(e) => setSlopeNormMax(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maximum normalized slope for range-bound
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="crossRateMin">Cross Rate Min</Label>
+                  <Input
+                    id="crossRateMin"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.08"
+                    value={crossRateMin}
+                    onChange={(e) => setCrossRateMin(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Minimum mean-crossing rate for range-bound (0-1)
+                  </p>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="windowSize">Window Size</Label>
+                <Input
+                  id="windowSize"
+                  type="number"
+                  placeholder="24"
+                  value={windowSize}
+                  onChange={(e) => setWindowSize(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Number of price points per analysis window
+                </p>
+              </div>
+              <div className="pt-2">
+                <Button
+                  onClick={handleSaveThresholds}
+                  disabled={isSavingThresholds}
+                >
+                  {isSavingThresholds ? 'Saving...' : 'Save Thresholds'}
+                </Button>
+              </div>
+              {thresholdsSaved && (
+                <p className="text-sm text-green-600">Thresholds saved successfully!</p>
+              )}
+              {thresholdsSaveError && (
+                <p className="text-sm text-destructive">{thresholdsSaveError}</p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
