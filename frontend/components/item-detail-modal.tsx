@@ -5,6 +5,7 @@ import { Star, ExternalLink, Ban } from 'lucide-react'
 import { Modal } from '@/components/modal'
 import { LastRefreshed } from '@/components/last-refreshed'
 import { RegimeTimeline } from '@/components/regime-timeline'
+import { RegimeAnalysis } from '@/components/regime-analysis'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useItem } from '@/hooks/use-item'
@@ -141,6 +142,14 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
               Price Regime
             </h3>
             <RegimeTimeline segments={segments} isLoading={isLoadingRegime} />
+          </div>
+
+          {/* Regime Analysis Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Regime Analysis
+            </h3>
+            <RegimeAnalysis segments={segments} isLoading={isLoadingRegime} />
           </div>
 
           {/* Current Prices Section */}
