@@ -30,6 +30,15 @@ export default function SettingsPage() {
   const [maxVolume, setMaxVolume] = useState(defaultFilters.maxVolume)
   const [showSaved, setShowSaved] = useState(false)
 
+  // Sync local state when defaultFilters changes (e.g., from another tab)
+  useEffect(() => {
+    setMinPrice(defaultFilters.minPrice)
+    setMaxPrice(defaultFilters.maxPrice)
+    setMinMargin(defaultFilters.minMargin)
+    setMinVolume(defaultFilters.minVolume)
+    setMaxVolume(defaultFilters.maxVolume)
+  }, [defaultFilters])
+
   // Favorites state
   const [favoriteItems, setFavoriteItems] = useState<Item[]>([])
   const [loadingFavorites, setLoadingFavorites] = useState(false)
