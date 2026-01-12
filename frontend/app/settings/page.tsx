@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/contexts/settings-context'
+import { api } from '@/lib/api'
+import type { Item } from '@/lib/types'
 
 export default function SettingsPage() {
-  const { defaultFilters, setDefaultFilters, resetToSystemDefaults } = useSettings()
+  const {
+    defaultFilters,
+    setDefaultFilters,
+    resetToSystemDefaults,
+    favorites,
+    removeFavorite,
+    clearFavorites,
+  } = useSettings()
 
   const [minPrice, setMinPrice] = useState(defaultFilters.minPrice)
   const [maxPrice, setMaxPrice] = useState(defaultFilters.maxPrice)
@@ -16,6 +25,29 @@ export default function SettingsPage() {
   const [minVolume, setMinVolume] = useState(defaultFilters.minVolume)
   const [maxVolume, setMaxVolume] = useState(defaultFilters.maxVolume)
   const [showSaved, setShowSaved] = useState(false)
+
+  // Favorites state
+  const [favoriteItems, setFavoriteItems] = useState<Item[]>([])
+  const [loadingFavorites, setLoadingFavorites] = useState(false)
+
+  // Fetch favorite items
+  useEffect(() => {
+    if (favorites.length === 0) {
+      setFavoriteItems([])
+      return
+    }
+
+    setLoadingFavorites(true)
+    Promise.all(
+      favorites.map((id) =>
+        api.get<Item>(`/api/items/${id}`).catch(() => null)
+      )
+    )
+      .then((items) => {
+        setFavoriteItems(items.filter((item): item is Item => item !== null))
+      })
+      .finally(() => setLoadingFavorites(false))
+  }, [favorites])
 
   const handleSaveDefaults = () => {
     setDefaultFilters({
@@ -36,6 +68,12 @@ export default function SettingsPage() {
     setMinMargin('')
     setMinVolume('')
     setMaxVolume('')
+  }
+
+  const handleClearAllFavorites = () => {
+    if (window.confirm('Are you sure you want to clear all favorites?')) {
+      clearFavorites()
+    }
   }
 
   return (
@@ -112,6 +150,54 @@ export default function SettingsPage() {
           </div>
           {showSaved && (
             <p className="text-sm text-green-600">Defaults saved successfully!</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Favorites Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Favorites ({favorites.length} items)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {favorites.length === 0 ? (
+            <p className="text-muted-foreground">No favorites yet</p>
+          ) : loadingFavorites ? (
+            <p className="text-muted-foreground">Loading...</p>
+          ) : (
+            <div className="space-y-2">
+              {favoriteItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between py-2 border-b last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    {item.icon_url && (
+                      <img
+                        src={item.icon_url}
+                        alt={item.name}
+                        className="w-4 h-4 object-contain"
+                      />
+                    )}
+                    <span>{item.name}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFavorite(item.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="destructive"
+                className="w-full mt-4"
+                onClick={handleClearAllFavorites}
+              >
+                Clear All Favorites
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
