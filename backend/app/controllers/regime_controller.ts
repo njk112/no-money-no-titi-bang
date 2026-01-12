@@ -4,6 +4,7 @@ import ItemPrice from '#models/item_price'
 import RegimeSegment from '#models/regime_segment'
 import RegimeThreshold from '#models/regime_threshold'
 import { RegimeClassificationService } from '#services/regime/regime_classification_service'
+import { autoCalibrateThresholds } from '#services/regime/calibration'
 import type { PricePoint } from '#services/regime/classifier'
 
 export default class RegimeController {
@@ -334,5 +335,77 @@ export default class RegimeController {
 
     // Default JSON format
     return response.json(exportData)
+  }
+
+  /**
+   * POST /api/regime/calibrate
+   * Run auto-calibration and return suggested thresholds.
+   */
+  async calibrate({ request, response }: HttpContext) {
+    const body = request.body()
+
+    // Get window size from current thresholds
+    const thresholds = await RegimeThreshold.getGlobal()
+    const windowSize = thresholds.windowSize
+
+    // Determine which items to use for calibration
+    let itemIds: number[]
+    if (body.itemIds && Array.isArray(body.itemIds) && body.itemIds.length > 0) {
+      // Use provided item IDs
+      itemIds = body.itemIds.map((id: string | number) => parseInt(String(id), 10)).filter((id: number) => !isNaN(id))
+    } else {
+      // Select random sample of 50 items with sufficient price history
+      const itemsWithPrices = await ItemPrice.query()
+        .select('itemId')
+        .distinct('itemId')
+
+      // Shuffle and take up to 50
+      const shuffled = itemsWithPrices
+        .map((p) => p.itemId)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 50)
+
+      itemIds = shuffled
+    }
+
+    // Collect price arrays for each item
+    const allPrices: number[][] = []
+
+    for (const itemId of itemIds) {
+      const priceHistory = await ItemPrice.query()
+        .where('itemId', itemId)
+        .orderBy('syncedAt', 'asc')
+        .limit(windowSize * 3)
+        .select('highPrice', 'lowPrice')
+
+      // Need at least windowSize prices
+      if (priceHistory.length >= windowSize) {
+        const prices = priceHistory.map((p) => p.highPrice ?? p.lowPrice ?? 0)
+        allPrices.push(prices)
+      }
+    }
+
+    // Run calibration
+    const suggested = autoCalibrateThresholds(allPrices, windowSize)
+
+    return response.json({
+      suggested: {
+        chop_max: suggested.chopMax,
+        range_norm_max: suggested.rangeNormMax,
+        slope_norm_max: suggested.slopeNormMax,
+        cross_rate_min: suggested.crossRateMin,
+      },
+      stats: {
+        chop: suggested.chopStats,
+        range_norm: suggested.rangeNormStats,
+        slope_norm: suggested.slopeNormStats,
+        cross_rate: suggested.crossRateStats,
+      },
+      meta: {
+        items_sampled: allPrices.length,
+        windows_analyzed: suggested.windowCount,
+        window_size: windowSize,
+      },
+    })
   }
 }
