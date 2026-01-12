@@ -352,3 +352,18 @@
   - avgFeatures computed as average of all window features in segment
   - Import WindowFeatures from window_features.ts, not classifier.ts
 ---
+
+## 2026-01-12 - US-033
+- What was implemented: Streaming classification service for real-time price updates
+- Files changed:
+  - `backend/app/services/regime/streaming_classifier.ts` (created)
+- **Learnings:**
+  - StreamState holds: windowSize, thresholds, priceBuffer, currentFeatures, currentLabel, segment tracking
+  - initStreamState returns empty state ready for updates
+  - updateStream maintains rolling buffer via slice(-windowSize)
+  - First classification initializes segment tracking (not a label "change")
+  - Label change triggers segment finalization and returns completed segment
+  - Immutable state updates: spread operator for new state object
+  - Reuse confidence/features calculation logic from segment_builder
+  - Band metrics calculated from current buffer prices on segment finalization
+---
