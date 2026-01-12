@@ -37,6 +37,9 @@ export default function SettingsPage() {
     isLoading: isLoadingThresholds,
     error: thresholdsError,
     updateThresholds,
+    runCalibration,
+    suggestedThresholds,
+    isCalibrating,
   } = useRegimeThresholds()
 
   const [chopMax, setChopMax] = useState('')
@@ -159,6 +162,23 @@ export default function SettingsPage() {
     }
   }
 
+  const handleRunCalibration = async () => {
+    try {
+      await runCalibration()
+    } catch {
+      // Error already handled by hook
+    }
+  }
+
+  const handleApplySuggestions = () => {
+    if (suggestedThresholds) {
+      setChopMax(String(suggestedThresholds.suggested.chop_max))
+      setRangeNormMax(String(suggestedThresholds.suggested.range_norm_max))
+      setSlopeNormMax(String(suggestedThresholds.suggested.slope_norm_max))
+      setCrossRateMin(String(suggestedThresholds.suggested.cross_rate_min))
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -263,9 +283,14 @@ export default function SettingsPage() {
                     value={chopMax}
                     onChange={(e) => setChopMax(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Maximum chop ratio for range-bound (0-1)
-                  </p>
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.chop.p25.toFixed(4)}, p50: ${suggestedThresholds.stats.chop.p50.toFixed(4)}, p75: ${suggestedThresholds.stats.chop.p75.toFixed(4)}`}>
+                        Suggested: {suggestedThresholds.suggested.chop_max.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="rangeNormMax">Range % Max</Label>
@@ -277,9 +302,14 @@ export default function SettingsPage() {
                     value={rangeNormMax}
                     onChange={(e) => setRangeNormMax(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Maximum normalized range for range-bound
-                  </p>
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.range_norm.p25.toFixed(6)}, p50: ${suggestedThresholds.stats.range_norm.p50.toFixed(6)}, p75: ${suggestedThresholds.stats.range_norm.p75.toFixed(6)}`}>
+                        Suggested: {suggestedThresholds.suggested.range_norm_max.toFixed(6)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -293,9 +323,14 @@ export default function SettingsPage() {
                     value={slopeNormMax}
                     onChange={(e) => setSlopeNormMax(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Maximum normalized slope for range-bound
-                  </p>
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.slope_norm.p25.toFixed(8)}, p50: ${suggestedThresholds.stats.slope_norm.p50.toFixed(8)}, p75: ${suggestedThresholds.stats.slope_norm.p75.toFixed(8)}`}>
+                        Suggested: {suggestedThresholds.suggested.slope_norm_max.toFixed(8)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="crossRateMin">Cross Rate Min</Label>
@@ -307,9 +342,14 @@ export default function SettingsPage() {
                     value={crossRateMin}
                     onChange={(e) => setCrossRateMin(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Minimum mean-crossing rate for range-bound (0-1)
-                  </p>
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.cross_rate.p25.toFixed(4)}, p50: ${suggestedThresholds.stats.cross_rate.p50.toFixed(4)}, p75: ${suggestedThresholds.stats.cross_rate.p75.toFixed(4)}`}>
+                        Suggested: {suggestedThresholds.suggested.cross_rate_min.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div>
@@ -325,14 +365,34 @@ export default function SettingsPage() {
                   Number of price points per analysis window
                 </p>
               </div>
-              <div className="pt-2">
+              <div className="flex gap-2 pt-2">
                 <Button
                   onClick={handleSaveThresholds}
                   disabled={isSavingThresholds}
                 >
                   {isSavingThresholds ? 'Saving...' : 'Save Thresholds'}
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRunCalibration}
+                  disabled={isCalibrating}
+                >
+                  {isCalibrating ? 'Calibrating...' : 'Auto-Calibrate'}
+                </Button>
+                {suggestedThresholds && (
+                  <Button
+                    variant="outline"
+                    onClick={handleApplySuggestions}
+                  >
+                    Apply Suggestions
+                  </Button>
+                )}
               </div>
+              {suggestedThresholds && (
+                <p className="text-xs text-muted-foreground">
+                  Calibrated from {suggestedThresholds.meta.items_sampled} items, {suggestedThresholds.meta.windows_analyzed} windows analyzed
+                </p>
+              )}
               {thresholdsSaved && (
                 <p className="text-sm text-green-600">Thresholds saved successfully!</p>
               )}
