@@ -50,6 +50,9 @@ export default function SettingsPage() {
   const [isSavingThresholds, setIsSavingThresholds] = useState(false)
   const [thresholdsSaved, setThresholdsSaved] = useState(false)
   const [thresholdsSaveError, setThresholdsSaveError] = useState<string | null>(null)
+  const [isRecalculating, setIsRecalculating] = useState(false)
+  const [recalculateResult, setRecalculateResult] = useState<string | null>(null)
+  const [recalculateError, setRecalculateError] = useState<string | null>(null)
 
   // Sync threshold inputs when thresholds load
   useEffect(() => {
@@ -176,6 +179,31 @@ export default function SettingsPage() {
       setRangeNormMax(String(suggestedThresholds.suggested.range_norm_max))
       setSlopeNormMax(String(suggestedThresholds.suggested.slope_norm_max))
       setCrossRateMin(String(suggestedThresholds.suggested.cross_rate_min))
+    }
+  }
+
+  const handleRecalculate = async () => {
+    if (!window.confirm('This may take a while. Continue?')) {
+      return
+    }
+
+    setIsRecalculating(true)
+    setRecalculateResult(null)
+    setRecalculateError(null)
+
+    try {
+      const result = await api.post<{ itemsProcessed: number; segmentsCreated: number }>(
+        '/api/regime/recalculate',
+        {}
+      )
+      setRecalculateResult(
+        `Recalculated ${result.itemsProcessed} items, ${result.segmentsCreated} segments created`
+      )
+      setTimeout(() => setRecalculateResult(null), 5000)
+    } catch {
+      setRecalculateError('Failed to recalculate segments')
+    } finally {
+      setIsRecalculating(false)
     }
   }
 
@@ -398,6 +426,24 @@ export default function SettingsPage() {
               )}
               {thresholdsSaveError && (
                 <p className="text-sm text-destructive">{thresholdsSaveError}</p>
+              )}
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm text-muted-foreground mb-2">
+                  After changing thresholds, recalculate all regime segments to apply the new settings.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleRecalculate}
+                  disabled={isRecalculating}
+                >
+                  {isRecalculating ? 'Recalculating...' : 'Recalculate All Segments'}
+                </Button>
+              </div>
+              {recalculateResult && (
+                <p className="text-sm text-green-600">{recalculateResult}</p>
+              )}
+              {recalculateError && (
+                <p className="text-sm text-destructive">{recalculateError}</p>
               )}
             </>
           )}
