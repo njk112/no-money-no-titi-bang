@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/contexts/settings-context'
+import { SYSTEM_DEFAULT_FILTERS } from '@/lib/constants'
 import { api } from '@/lib/api'
 import type { Item } from '@/lib/types'
 
@@ -81,11 +82,11 @@ export default function SettingsPage() {
 
   const handleResetToSystemDefaults = () => {
     resetToSystemDefaults()
-    setMinPrice('')
-    setMaxPrice('')
-    setMinMargin('')
-    setMinVolume('')
-    setMaxVolume('')
+    setMinPrice(SYSTEM_DEFAULT_FILTERS.minPrice)
+    setMaxPrice(SYSTEM_DEFAULT_FILTERS.maxPrice)
+    setMinMargin(SYSTEM_DEFAULT_FILTERS.minMargin)
+    setMinVolume(SYSTEM_DEFAULT_FILTERS.minVolume)
+    setMaxVolume(SYSTEM_DEFAULT_FILTERS.maxVolume)
   }
 
   const handleClearAllFavorites = () => {
