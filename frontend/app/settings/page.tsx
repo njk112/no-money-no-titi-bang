@@ -17,6 +17,9 @@ export default function SettingsPage() {
     favorites,
     removeFavorite,
     clearFavorites,
+    blockedItems,
+    removeBlocked,
+    clearBlocked,
   } = useSettings()
 
   const [minPrice, setMinPrice] = useState(defaultFilters.minPrice)
@@ -29,6 +32,10 @@ export default function SettingsPage() {
   // Favorites state
   const [favoriteItems, setFavoriteItems] = useState<Item[]>([])
   const [loadingFavorites, setLoadingFavorites] = useState(false)
+
+  // Blocked items state
+  const [blockedItemDetails, setBlockedItemDetails] = useState<Item[]>([])
+  const [loadingBlocked, setLoadingBlocked] = useState(false)
 
   // Fetch favorite items
   useEffect(() => {
@@ -48,6 +55,25 @@ export default function SettingsPage() {
       })
       .finally(() => setLoadingFavorites(false))
   }, [favorites])
+
+  // Fetch blocked items
+  useEffect(() => {
+    if (blockedItems.length === 0) {
+      setBlockedItemDetails([])
+      return
+    }
+
+    setLoadingBlocked(true)
+    Promise.all(
+      blockedItems.map((id) =>
+        api.get<Item>(`/api/items/${id}`).catch(() => null)
+      )
+    )
+      .then((items) => {
+        setBlockedItemDetails(items.filter((item): item is Item => item !== null))
+      })
+      .finally(() => setLoadingBlocked(false))
+  }, [blockedItems])
 
   const handleSaveDefaults = () => {
     setDefaultFilters({
@@ -73,6 +99,12 @@ export default function SettingsPage() {
   const handleClearAllFavorites = () => {
     if (window.confirm('Are you sure you want to clear all favorites?')) {
       clearFavorites()
+    }
+  }
+
+  const handleClearAllBlocked = () => {
+    if (window.confirm('Are you sure you want to clear all blocked items?')) {
+      clearBlocked()
     }
   }
 
@@ -196,6 +228,54 @@ export default function SettingsPage() {
                 onClick={handleClearAllFavorites}
               >
                 Clear All Favorites
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Blocked Items Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Blocked Items ({blockedItems.length} items)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {blockedItems.length === 0 ? (
+            <p className="text-muted-foreground">No blocked items</p>
+          ) : loadingBlocked ? (
+            <p className="text-muted-foreground">Loading...</p>
+          ) : (
+            <div className="space-y-2">
+              {blockedItemDetails.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between py-2 border-b last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    {item.icon_url && (
+                      <img
+                        src={item.icon_url}
+                        alt={item.name}
+                        className="w-4 h-4 object-contain"
+                      />
+                    )}
+                    <span>{item.name}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeBlocked(item.id)}
+                  >
+                    Unblock
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="destructive"
+                className="w-full mt-4"
+                onClick={handleClearAllBlocked}
+              >
+                Clear All Blocked
               </Button>
             </div>
           )}
