@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table'
 import type { Item } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/contexts/settings-context'
 
 interface ItemsTableProps {
   items: Item[]
@@ -48,6 +49,8 @@ function getMarginColor(margin: number | null): string {
 }
 
 export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
+  const { favorites, toggleFavorite } = useSettings()
+
   if (items.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -60,6 +63,7 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10"></TableHead>
           <TableHead className="w-12">Icon</TableHead>
           <TableHead>Name</TableHead>
           <TableHead className="text-right">Buy Price</TableHead>
@@ -79,6 +83,24 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
             )}
             onClick={() => onItemClick?.(item.id)}
           >
+            <TableCell>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFavorite(item.id)
+                }}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <Star
+                  className={cn(
+                    'w-4 h-4 transition-colors',
+                    favorites.includes(item.id)
+                      ? 'fill-yellow-500 text-yellow-500'
+                      : 'text-muted-foreground hover:text-yellow-500'
+                  )}
+                />
+              </button>
+            </TableCell>
             <TableCell>
               <ItemIcon src={item.icon_url} alt={item.name} />
             </TableCell>
