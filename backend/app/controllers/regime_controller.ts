@@ -1,7 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Item from '#models/item'
+import ItemPrice from '#models/item_price'
 import RegimeSegment from '#models/regime_segment'
 import RegimeThreshold from '#models/regime_threshold'
+import { RegimeClassificationService } from '#services/regime/regime_classification_service'
+import type { PricePoint } from '#services/regime/classifier'
 
 export default class RegimeController {
   /**
@@ -142,6 +145,84 @@ export default class RegimeController {
       slope_norm_max: thresholds.slopeNormMax,
       cross_rate_min: thresholds.crossRateMin,
       window_size: thresholds.windowSize,
+    })
+  }
+
+  /**
+   * POST /api/regime/recalculate
+   * Trigger full recalculation of regime segments.
+   * Optional body: { itemId: number } to recalculate single item.
+   */
+  async recalculate({ request, response }: HttpContext) {
+    const body = request.body()
+    const classificationService = new RegimeClassificationService()
+
+    // Get window size for price history fetch
+    const thresholds = await RegimeThreshold.getGlobal()
+    const windowSize = thresholds.windowSize
+
+    let itemsProcessed = 0
+    let segmentsCreated = 0
+
+    // Get list of item IDs to process
+    let itemIds: number[]
+    if (body.itemId) {
+      // Single item recalculation
+      const itemId = parseInt(body.itemId, 10)
+      const item = await Item.find(itemId)
+      if (!item) {
+        return response.notFound({ message: 'Item not found' })
+      }
+      itemIds = [itemId]
+    } else {
+      // Recalculate all items with price history
+      const itemsWithPrices = await ItemPrice.query()
+        .select('itemId')
+        .distinct('itemId')
+      itemIds = itemsWithPrices.map((p) => p.itemId)
+    }
+
+    // Process each item
+    for (const itemId of itemIds) {
+      try {
+        // Fetch recent price history
+        const priceHistory = await ItemPrice.query()
+          .where('itemId', itemId)
+          .orderBy('syncedAt', 'desc')
+          .limit(windowSize * 2)
+          .select('id', 'itemId', 'highPrice', 'lowPrice', 'syncedAt')
+
+        // Need at least windowSize prices to classify
+        if (priceHistory.length < windowSize) continue
+
+        // Reverse to get chronological order
+        priceHistory.reverse()
+
+        // Convert to PricePoint format
+        const pricePoints: PricePoint[] = priceHistory.map((p, index) => ({
+          price: p.highPrice ?? p.lowPrice ?? 0,
+          timestamp: p.syncedAt.toJSDate(),
+          index,
+        }))
+
+        // Run classification
+        const segments = await classificationService.classifyItem(itemId, pricePoints)
+
+        // Save segments
+        if (segments.length > 0) {
+          await classificationService.saveSegments(itemId, segments)
+          segmentsCreated += segments.length
+        }
+
+        itemsProcessed++
+      } catch (error) {
+        console.error(`Recalculate failed for item ${itemId}:`, error)
+      }
+    }
+
+    return response.json({
+      itemsProcessed,
+      segmentsCreated,
     })
   }
 }
