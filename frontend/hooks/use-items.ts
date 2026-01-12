@@ -1,8 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Item, ItemsParams, ItemsResponse } from '@/lib/types'
+
+interface UseItemsOptions {
+  pollInterval?: number
+}
 
 interface UseItemsResult {
   items: Item[]
@@ -13,12 +17,13 @@ interface UseItemsResult {
   refetch: () => void
 }
 
-export function useItems(params: ItemsParams): UseItemsResult {
+export function useItems(params: ItemsParams, options?: UseItemsOptions): UseItemsResult {
   const [items, setItems] = useState<Item[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const buildQueryString = useCallback((p: ItemsParams) => {
     const searchParams = new URLSearchParams()
@@ -56,7 +61,17 @@ export function useItems(params: ItemsParams): UseItemsResult {
 
   useEffect(() => {
     fetchItems()
-  }, [fetchItems])
+
+    if (options?.pollInterval) {
+      intervalRef.current = setInterval(fetchItems, options.pollInterval)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [fetchItems, options?.pollInterval])
 
   return {
     items,
