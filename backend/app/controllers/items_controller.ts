@@ -14,6 +14,7 @@ export default class ItemsController {
     const minVolume = request.input('min_volume')
     const maxVolume = request.input('max_volume')
     const members = request.input('members')
+    const regime = request.input('regime')
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
@@ -83,6 +84,11 @@ export default class ItemsController {
       query.where('items.members', true)
     } else if (members === 'false') {
       query.where('items.members', false)
+    }
+
+    // Regime filter (US-024)
+    if (regime === 'RANGE_BOUND' || regime === 'TRENDING') {
+      query.where('items.current_regime', regime)
     }
 
     // Clone query for count (before pagination)
