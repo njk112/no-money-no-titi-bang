@@ -4,8 +4,8 @@ import {
   classifyRegime,
   type Thresholds,
   type PricePoint,
-  type WindowFeatures,
 } from '#services/regime/classifier'
+import type { WindowFeatures } from '#services/regime/window_features'
 
 // Default thresholds for testing
 const defaultThresholds: Thresholds = {
