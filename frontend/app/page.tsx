@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Star } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { FilterPanel } from '@/components/filter-panel'
 import { ItemsTable } from '@/components/items-table'
@@ -11,8 +12,10 @@ import { ItemDetailModal } from '@/components/item-detail-modal'
 import { LastRefreshed } from '@/components/last-refreshed'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { useItems } from '@/hooks/use-items'
 import { useDebounce } from '@/hooks/use-debounce'
+import { useSettings } from '@/contexts/settings-context'
 import type { ItemsParams } from '@/lib/types'
 
 export default function Dashboard() {
@@ -25,6 +28,7 @@ export default function Dashboard() {
   const [maxVolume, setMaxVolume] = useState<string>('')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
+  const { favorites, showFavoritesOnly, setShowFavoritesOnly } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
 
   const params: ItemsParams = useMemo(() => ({
@@ -40,6 +44,12 @@ export default function Dashboard() {
   }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume])
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
+
+  // Filter items to show only favorites when enabled
+  const filteredItems = useMemo(() => {
+    if (!showFavoritesOnly) return items
+    return items.filter((item) => favorites.includes(item.id))
+  }, [items, favorites, showFavoritesOnly])
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
@@ -137,12 +147,26 @@ export default function Dashboard() {
 
         {/* Main content */}
         <div className="flex-1 space-y-4">
-          {/* Search */}
-          <SearchInput
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search items..."
-          />
+          {/* Search and Favorites Toggle */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SearchInput
+                value={search}
+                onChange={handleSearchChange}
+                placeholder="Search items..."
+              />
+            </div>
+            <Button
+              variant={showFavoritesOnly ? 'default' : 'outline'}
+              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+              className="shrink-0"
+            >
+              <Star
+                className={`w-4 h-4 mr-2 ${showFavoritesOnly ? 'fill-current' : ''}`}
+              />
+              Favorites
+            </Button>
+          </div>
 
           {/* Table */}
           <div className="rounded-lg border">
@@ -151,7 +175,7 @@ export default function Dashboard() {
             ) : error ? (
               <ErrorState message={error.message} onRetry={refetch} />
             ) : (
-              <ItemsTable items={items} onItemClick={handleItemClick} />
+              <ItemsTable items={filteredItems} onItemClick={handleItemClick} />
             )}
           </div>
 
