@@ -82,7 +82,7 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   {item.name}
                   {item.members && (
-                    <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xs text-yellow-600 font-medium px-1.5 py-0.5 bg-yellow-100 rounded">P2P</span>
                   )}
                 </h2>
                 <button

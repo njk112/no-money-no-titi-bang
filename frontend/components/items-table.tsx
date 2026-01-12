@@ -108,7 +108,7 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
               <span className="flex items-center gap-1">
                 {item.name}
                 {item.members && (
-                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  <span className="text-xs text-yellow-600 font-medium">P2P</span>
                 )}
               </span>
             </TableCell>

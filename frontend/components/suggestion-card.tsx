@@ -1,6 +1,5 @@
 'use client'
 
-import { Star } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { SuggestionItem } from '@/lib/types'
 
@@ -30,7 +29,7 @@ export function SuggestionCard({ suggestion, onItemClick }: SuggestionCardProps)
             <h3 className="font-medium flex items-center gap-1 truncate">
               {suggestion.name}
               {suggestion.members && (
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                <span className="text-xs text-yellow-600 font-medium shrink-0">P2P</span>
               )}
             </h3>
             <p className="text-sm text-muted-foreground">
