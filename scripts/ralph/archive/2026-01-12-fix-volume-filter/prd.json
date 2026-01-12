@@ -1,0 +1,23 @@
+{
+  "project": "OSRS GE Dashboard",
+  "branchName": "ralph/fix-volume-filter",
+  "description": "Fix volume filter bug - min_volume and max_volume parameters are not being sent to the API",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add volume parameters to API query string",
+      "description": "As a user, I want my volume filter inputs to be sent to the API so that items are actually filtered by volume.",
+      "acceptanceCriteria": [
+        "In frontend/hooks/use-items.ts, add min_volume to buildQueryString: if (p.min_volume !== undefined) searchParams.set('min_volume', String(p.min_volume))",
+        "In frontend/hooks/use-items.ts, add max_volume to buildQueryString: if (p.max_volume !== undefined) searchParams.set('max_volume', String(p.max_volume))",
+        "Volume parameters appear in network requests when filter values are entered",
+        "Large numbers like 10000000 are sent correctly (not as scientific notation)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill: enter min_volume=10000000  and min_volume=500 confirm filtered results. Click on any of the modal and check whether the daily limit reflects the filtering"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

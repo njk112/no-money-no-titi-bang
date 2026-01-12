@@ -1,10 +1,11 @@
 # Ralph Progress Log
 
 ## Codebase Patterns
-- Frontend: Next.js with shadcn/ui components
-- Backend: AdonisJS with Lucid ORM
+- Frontend: Next.js with shadcn/ui components, Radix UI, Tailwind CSS
+- Backend: AdonisJS with Lucid ORM, node-cron for scheduling
 - API: REST endpoints at /api/*
-- Volume filtering: use parseInt() on backend, String() conversion on frontend
+- Hooks pattern: Custom React hooks in frontend/hooks/
+- Existing scheduler: backend/start/scheduler.ts with SYNC_CRON env var
 
 ---
 

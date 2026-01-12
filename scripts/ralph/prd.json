@@ -1,23 +1,110 @@
 {
   "project": "OSRS GE Dashboard",
-  "branchName": "ralph/fix-volume-filter",
-  "description": "Fix volume filter bug - min_volume and max_volume parameters are not being sent to the API",
+  "branchName": "ralph/prices-volume-auto-sync",
+  "description": "Add automatic price/volume sync every minute with frontend auto-refresh and last refreshed display",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add volume parameters to API query string",
-      "description": "As a user, I want my volume filter inputs to be sent to the API so that items are actually filtered by volume.",
+      "title": "Separate Price Sync Scheduler",
+      "description": "As a system, I need to sync prices every minute independently from the daily item sync so that price data stays fresh.",
       "acceptanceCriteria": [
-        "In frontend/hooks/use-items.ts, add min_volume to buildQueryString: if (p.min_volume !== undefined) searchParams.set('min_volume', String(p.min_volume))",
-        "In frontend/hooks/use-items.ts, add max_volume to buildQueryString: if (p.max_volume !== undefined) searchParams.set('max_volume', String(p.max_volume))",
-        "Volume parameters appear in network requests when filter values are entered",
-        "Large numbers like 10000000 are sent correctly (not as scientific notation)",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill: enter min_volume=10000000  and min_volume=500 confirm filtered results. Click on any of the modal and check whether the daily limit reflects the filtering"
+        "Add PRICES_SYNC_CRON environment variable in backend/start/scheduler.ts (default: '* * * * *')",
+        "Create runPricesSync() function that only calls PricesSyncService.syncPrices()",
+        "Register second cron job for price-only sync using PRICES_SYNC_CRON",
+        "Keep existing runSync() and SYNC_CRON for daily full sync unchanged",
+        "Log sync start and completion with timing info",
+        "Sync failures are caught and logged (silent retry on next interval)",
+        "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Volume parameters now sent to API. Verified with browser testing - min_volume=500 and max_volume=10000000 correctly filter results."
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Sync Status API Endpoint",
+      "description": "As a frontend developer, I need an API endpoint to get the last sync timestamp so I can display when data was last refreshed.",
+      "acceptanceCriteria": [
+        "Create backend/app/controllers/sync_controller.ts with status() method",
+        "Query most recent synced_at from item_prices table: ItemPrice.query().select('synced_at').orderBy('synced_at', 'desc').first()",
+        "Return JSON: { last_synced_at: string | null }",
+        "Register route in backend/start/routes.ts: GET /api/sync/status",
+        "Returns null if no prices exist yet",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create useSyncStatus Hook and Add Polling to useItems",
+      "description": "As a frontend developer, I need hooks to fetch sync status and auto-refresh items data.",
+      "acceptanceCriteria": [
+        "Create frontend/hooks/use-sync-status.ts hook",
+        "useSyncStatus fetches /api/sync/status and polls every 60 seconds",
+        "Returns { lastSyncedAt: string | null, isLoading: boolean, error: Error | null, refetch: () => void }",
+        "Add optional pollInterval parameter to useItems hook in frontend/hooks/use-items.ts",
+        "When pollInterval is set, useItems refetches data on that interval using setInterval",
+        "Clean up intervals on unmount",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create LastRefreshed Component and Add to Dashboard Header",
+      "description": "As a user, I want to see when data was last refreshed in the dashboard header so I know how current the prices are.",
+      "acceptanceCriteria": [
+        "Create frontend/components/last-refreshed.tsx component",
+        "Component uses useSyncStatus hook internally",
+        "Display format: 'Last refreshed: X min ago' with RefreshCw icon from lucide-react",
+        "Relative time: 'just now' (<60s), 'X min ago' (<60min), 'X hour(s) ago' (<24h), full date otherwise",
+        "Shows 'Loading...' during initial fetch",
+        "Style with text-muted-foreground class",
+        "Add LastRefreshed to dashboard header in frontend/app/page.tsx (right side, near title)",
+        "Enable 60000ms polling on useItems call in page.tsx",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add LastRefreshed to Item Modal",
+      "description": "As a user, I want to see when data was last refreshed in the item detail modal so I know how current the displayed prices are.",
+      "acceptanceCriteria": [
+        "Import LastRefreshed component in frontend/components/item-detail-modal.tsx",
+        "Add LastRefreshed at the bottom of the modal content, after the External Link section",
+        "Wrap in div with 'pt-4 border-t' classes for visual separation",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add Rate-Limited Manual Refresh Button",
+      "description": "As a user, I want a manual refresh button so I can get the latest data immediately when I need it.",
+      "acceptanceCriteria": [
+        "Add refresh button to LastRefreshed component (clickable RefreshCw icon or button)",
+        "Track lastRefreshTime in component state",
+        "Button triggers refetch from useSyncStatus hook",
+        "Disable button for 30 seconds after click (rate limit)",
+        "Show spinning animation on RefreshCw icon while refreshing or during cooldown",
+        "Tooltip or title showing 'Refresh' or 'Wait Xs' during cooldown",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
     }
   ]
 }
