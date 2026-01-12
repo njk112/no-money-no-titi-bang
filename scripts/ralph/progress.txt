@@ -1,1 +1,354 @@
 # Ralph Progress Log
+
+## Codebase Patterns
+- Migrations: Located in `backend/database/migrations/` with timestamp prefix (13 digits ms)
+- Migrations: Use `table.increments('id')` for primary key
+- Migrations: Foreign keys chain `.references('id').inTable('table').onDelete('CASCADE')`
+- Migrations: Indexes via `table.index(['column'])` or `table.index(['col1', 'col2'])`
+- Models: Located in `backend/app/models/` using AdonisJS Lucid ORM
+- Models: Use `@column()` for primitives, `@column.dateTime()` for timestamps
+- Models: Relationships via `@hasMany()` and `@belongsTo()` decorators
+- Typecheck: Pre-existing errors in `items_sync_service.ts` unrelated to new code
+
+---
+
+## 2026-01-12 - US-001
+- What was implemented: Created regime_segments database table migration
+- Files changed:
+  - `backend/database/migrations/1768257726094_create_regime_segments_table.ts` (created)
+- **Learnings:**
+  - Migrations follow pattern: `[timestamp]_create_[table]_table.ts`
+  - AdonisJS uses `this.schema.createTable()` inside `up()` method
+  - Foreign key with CASCADE: `.references('id').inTable('items').onDelete('CASCADE')`
+  - Composite index: `table.index(['item_id', 'end_ts'])`
+  - Run migrations with `node ace migration:run` from backend directory
+- Seeders: Located in `backend/database/seeders/`
+- Seeders: Create with `node ace make:seeder <name>`, run with `node ace db:seed --files="./database/seeders/<name>.ts"`
+- Seeders: Use `db.from()` for queries, `db.table().insert()` for inserts
+---
+
+## 2026-01-12 - US-002
+- What was implemented: Created regime_thresholds config table with default seeder
+- Files changed:
+  - `backend/database/migrations/1768257862124_create_regime_thresholds_table.ts` (created)
+  - `backend/database/seeders/regime_threshold_seeder.ts` (created)
+- **Learnings:**
+  - Seeders use `BaseSeeder` from '@adonisjs/lucid/seeders'
+  - Use `db` from '@adonisjs/lucid/services/db' for raw queries in seeders
+  - Check for existing data to make seeders idempotent
+---
+
+## 2026-01-12 - US-003
+- What was implemented: Added current_regime column to items table
+- Files changed:
+  - `backend/database/migrations/1768257941480_add_current_regime_to_items_table.ts` (created)
+- **Learnings:**
+  - Use `this.schema.alterTable()` to modify existing tables
+  - `.nullable()` ensures column defaults to null for existing rows
+---
+
+## 2026-01-12 - US-004
+- What was implemented: Linear regression slope helper for regime classification
+- Files changed:
+  - `backend/app/services/regime/linear_regression.ts` (created)
+- **Learnings:**
+  - Created `regime` subdirectory under services for regime-related utilities
+  - Least squares slope: sum((x-xMean)(y-yMean)) / sum((x-xMean)^2)
+  - For x values 0,1,2...n-1, mean is (n-1)/2 - simple formula optimization
+---
+
+## 2026-01-12 - US-005
+- What was implemented: Window features computation utility
+- Files changed:
+  - `backend/app/services/regime/window_features.ts` (created)
+- **Learnings:**
+  - Use `.js` extension in imports for ES modules: `import { computeSlope } from './linear_regression.js'`
+  - EPSILON = 1e-10 prevents division by zero in scale-free calculations
+  - Chop ratio: net movement / total movement (high = trending)
+  - Cross rate: sign changes in (price - mean) / n
+---
+
+## 2026-01-12 - US-006
+- What was implemented: Window classifier function
+- Files changed:
+  - `backend/app/services/regime/classifier.ts` (created)
+- **Learnings:**
+  - RANGE_BOUND requires ALL 4 conditions: low chop, low range, low slope, high crossRate
+  - Use `import type { WindowFeatures }` for type-only imports
+---
+
+## 2026-01-12 - US-007
+- What was implemented: Rolling window classifier function
+- Files changed:
+  - `backend/app/services/regime/classifier.ts` (modified - added PricePoint, WindowLabel, ClassifierOptions, classifyRegime)
+- **Learnings:**
+  - Can combine value and type imports: `import { fn, type Type } from './module.js'`
+  - Rolling window: iterate i=0 to series.length-windowSize, slice [i, i+windowSize)
+  - Default parameter in destructuring: `{ stepSize = 1, ...rest } = opts`
+---
+
+## 2026-01-12 - US-008
+- What was implemented: Segment builder for merging consecutive windows
+- Files changed:
+  - `backend/app/services/regime/segment_builder.ts` (created)
+- **Learnings:**
+  - Confidence score: distance from threshold boundaries (0-1 scale)
+  - RANGE_BOUND: margin = 1 - feature/threshold
+  - TRENDING: excess = feature/threshold - 1
+  - Band metrics only for RANGE_BOUND segments
+---
+
+## 2026-01-12 - US-009
+- What was implemented: RegimeSegment Lucid ORM model
+- Files changed:
+  - `backend/app/models/regime_segment.ts` (created)
+  - `backend/app/models/item.ts` (modified - added hasMany relationship, currentRegime column)
+- **Learnings:**
+  - Relationships: parent model uses `@hasMany(() => ChildModel)`, child uses `@belongsTo(() => ParentModel)`
+  - Import circular dependency: import child in parent file, use arrow function for lazy loading
+  - Also added currentRegime column to Item model that was missing from US-003
+---
+
+## 2026-01-12 - US-010
+- What was implemented: RegimeThreshold Lucid ORM model with static helpers
+- Files changed:
+  - `backend/app/models/regime_threshold.ts` (created)
+- **Learnings:**
+  - Static async methods on models: `static async getGlobal(): Promise<Model>`
+  - Query single row: `Model.query().first()`
+  - Partial updates: accept interface with optional fields, check undefined before assigning
+---
+
+## 2026-01-12 - US-011
+- What was implemented: RegimeClassificationService orchestration service
+- Files changed:
+  - `backend/app/services/regime/regime_classification_service.ts` (created)
+- **Learnings:**
+  - Use `#models/model_name` for AdonisJS model imports
+  - Convert Date to Luxon DateTime: `DateTime.fromJSDate(jsDate)`
+  - Full replace strategy: delete existing records before inserting new ones
+  - Use reduce to find max by property: `arr.reduce((max, item) => item.val > max.val ? item : max)`
+---
+
+## 2026-01-12 - US-012
+- What was implemented: Integrated regime classification into price sync
+- Files changed:
+  - `backend/app/services/prices_sync_service.ts` (modified)
+- **Learnings:**
+  - Query with limit and order: `Model.query().where().orderBy('col', 'desc').limit(n)`
+  - Convert Luxon DateTime to JS Date: `dateTime.toJSDate()`
+  - Nested try-catch: outer for overall errors, inner for per-item errors
+  - Use high price as fallback: `p.highPrice ?? p.lowPrice ?? 0`
+---
+
+## 2026-01-12 - US-013, US-014
+- What was implemented: Regime API endpoints for segments and thresholds
+- Files changed:
+  - `backend/app/controllers/regime_controller.ts` (created)
+  - `backend/start/routes.ts` (modified)
+- **Learnings:**
+  - Controllers: import type HttpContext, destructure params/request/response
+  - Routes: lazy import controllers with arrow function `() => import('#controllers/...')`
+  - Validation: parse and validate each field, collect errors array, return 400 if errors
+  - Response transform: convert snake_case for API, use DateTime.toISO() for dates
+---
+
+## 2026-01-12 - US-015
+- What was implemented: Regime recalculate API endpoint
+- Files changed:
+  - `backend/app/controllers/regime_controller.ts` (modified)
+  - `backend/start/routes.ts` (modified)
+- **Learnings:**
+  - Use `#services/...` import alias for AdonisJS services
+  - Query distinct values: `Model.query().select('col').distinct('col')`
+  - Can instantiate service classes in controller methods
+---
+
+## 2026-01-12 - US-016
+- What was implemented: Regime export API endpoint (JSON and CSV)
+- Files changed:
+  - `backend/app/controllers/regime_controller.ts` (modified)
+  - `backend/start/routes.ts` (modified)
+- **Learnings:**
+  - CSV export: set Content-Type: text/csv, Content-Disposition with filename
+  - Use response.send() for raw text output, response.json() for JSON
+  - Segment lookup: iterate through segments to find matching timestamp range
+---
+
+## 2026-01-12 - US-017
+- What was implemented: Auto-calibration utility for threshold suggestions
+- Files changed:
+  - `backend/app/services/regime/calibration.ts` (created)
+- **Learnings:**
+  - Percentile calculation: sort array, interpolate between floor/ceil indices
+  - Distribution stats: min, max, p25, p50, p75
+  - RANGE_BOUND thresholds: use 25th percentile for max thresholds, 75th for min
+---
+
+## 2026-01-12 - US-019
+- What was implemented: React hook for fetching regime segments
+- Files changed:
+  - `frontend/hooks/use-regime-segments.ts` (created)
+- **Learnings:**
+  - Frontend hooks: Located in `frontend/hooks/`, use 'use client' directive at top
+  - Pattern: useState for data/isLoading/error, useCallback for fetch fn, useEffect to trigger
+  - API: Import `api` from '@/lib/api', use `api.get<T>()` with type parameter
+  - Query params: Build with URLSearchParams, append to endpoint if non-empty
+  - Date params: Convert Date to ISO string with `toISOString()`
+  - Typecheck frontend: `cd frontend && npx tsc --noEmit`
+---
+
+## 2026-01-12 - US-020
+- What was implemented: React hook for fetching and updating regime thresholds with calibration
+- Files changed:
+  - `frontend/hooks/use-regime-thresholds.ts` (created)
+- **Learnings:**
+  - Multiple async functions in hook: use separate useCallback for each
+  - Calibration state: separate isCalibrating from isLoading for different operations
+  - POST with optional body: pass empty object {} if no itemIds provided
+  - Re-throw errors in async functions after setting error state for caller handling
+---
+
+## 2026-01-12 - US-021
+- What was implemented: Regime timeline visualization in ItemDetailModal
+- Files changed:
+  - `frontend/components/regime-timeline.tsx` (created)
+  - `frontend/components/item-detail-modal.tsx` (modified)
+- **Learnings:**
+  - Timeline visualization: Calculate segment positions as % of total time range
+  - Colors: green-500 rgba(34, 197, 94, 0.2) for RANGE_BOUND, orange-500 rgba(249, 115, 22, 0.2) for TRENDING
+  - Use inline styles for dynamic colors with rgba values
+  - useMemo for computed timeline data derived from segments
+  - Add title attribute for hover tooltip showing segment details
+---
+
+## 2026-01-12 - US-022
+- What was implemented: Regime analysis info panel in ItemDetailModal
+- Files changed:
+  - `frontend/components/regime-analysis.tsx` (created)
+  - `frontend/components/item-detail-modal.tsx` (modified)
+- **Learnings:**
+  - Find most recent segment: use reduce with Date comparison on end_ts
+  - Confidence badge: map score to Low/Medium/High with Tailwind color classes
+  - Conditional rendering: show Band info only for RANGE_BOUND with non-null values
+  - Feature value formatting: use toFixed() with appropriate decimal places
+---
+
+## 2026-01-12 - US-023
+- What was implemented: Regime filter dropdown in dashboard FilterPanel
+- Files changed:
+  - `frontend/lib/types.ts` (modified - added regime to ItemsParams)
+  - `frontend/hooks/use-items.ts` (modified - added regime to query string)
+  - `frontend/app/page.tsx` (modified - added regime state and Select dropdown)
+- **Learnings:**
+  - Select component: import from '@/components/ui/select' with SelectTrigger, SelectContent, SelectItem
+  - Filter state pattern: use 'all' | specific_value, convert to undefined when 'all' for API
+  - Type annotation on onValueChange: `(value: 'all' | 'X' | 'Y') => ...`
+  - Reset filters should also reset new filter values
+---
+
+## 2026-01-12 - US-024
+- What was implemented: Backend regime filtering in ItemsController
+- Files changed:
+  - `backend/app/controllers/items_controller.ts` (modified)
+- **Learnings:**
+  - Validate regime param to only accept valid values: `if (regime === 'RANGE_BOUND' || regime === 'TRENDING')`
+  - Filter on column: `query.where('items.current_regime', regime)`
+  - Null values automatically excluded when filtering on specific value (WHERE current_regime = 'X' won't match NULL)
+---
+
+## 2026-01-12 - US-025
+- What was implemented: Regime thresholds settings section in Settings page
+- Files changed:
+  - `frontend/app/settings/page.tsx` (modified)
+- **Learnings:**
+  - Import CardDescription from card UI component for subtitle text
+  - Threshold inputs: use step attribute for decimal precision (step="0.01")
+  - Loading/error/content pattern: conditional render based on isLoading/error state
+  - Helper text: use `text-xs text-muted-foreground mt-1` for input descriptions
+  - Async handler with try/catch: set saving state, clear error, save, show success/error
+---
+
+## 2026-01-12 - US-026
+- What was implemented: Auto-calibration UI with suggested values display
+- Files changed:
+  - `frontend/app/settings/page.tsx` (modified)
+- **Learnings:**
+  - Use title attribute for hover tooltips to show distribution stats (p25, p50, p75)
+  - Suggested values: display as text-blue-600 below helper text
+  - Apply suggestions: copy suggestedThresholds.suggested values to input state
+  - Button row: use flex gap-2 for multiple buttons
+  - Conditional render: only show "Apply Suggestions" button when suggestedThresholds exists
+---
+
+## 2026-01-12 - US-027
+- What was implemented: Recalculate all segments button in Settings
+- Files changed:
+  - `frontend/app/settings/page.tsx` (modified)
+- **Learnings:**
+  - Confirmation dialog: use window.confirm() before destructive operations
+  - POST request with empty body: `api.post<ResponseType>('/api/path', {})`
+  - Separator: use `border-t pt-4 mt-4` for visual section divider
+  - Timed message: setTimeout to clear success message after 5000ms
+---
+
+## 2026-01-12 - US-028
+- What was implemented: Export button in ItemDetailModal for regime data
+- Files changed:
+  - `frontend/lib/api.ts` (modified - added baseUrl export)
+  - `frontend/components/item-detail-modal.tsx` (modified)
+- **Learnings:**
+  - File download: create blob, createObjectURL, create <a> element, click(), revokeObjectURL
+  - CSV download: use fetch().blob() to get raw response
+  - JSON download: use api.get(), then Blob with JSON.stringify
+  - Filename sanitization: replace spaces with dashes using regex `/\s+/g`
+  - Format selection: use Select component with json/csv options
+---
+
+## 2026-01-12 - US-029
+- What was implemented: Unit tests for linear regression slope calculation
+- Files changed:
+  - `backend/tests/unit/regime/linear_regression.spec.ts` (created)
+- **Learnings:**
+  - Japa test framework: `test.group()` for grouping, `test()` for individual tests
+  - Assertions: `assert.isAbove()`, `assert.isBelow()`, `assert.closeTo()`, `assert.equal()`
+  - Import service: use `#services/regime/module` alias
+  - Run specific test file: `node ace test --files="tests/unit/regime/file.spec.ts"`
+---
+
+## 2026-01-12 - US-030
+- What was implemented: Unit tests for window features computation
+- Files changed:
+  - `backend/tests/unit/regime/window_features.spec.ts` (created)
+- **Learnings:**
+  - Test both computeWindowFeatures and computeMedian (helper exported)
+  - Chop: high for trending (close to 1), low for oscillating (close to 0)
+  - CrossRate: high for oscillating (many mean crossings), low for trending
+  - Edge cases: constant prices, empty arrays
+---
+
+## 2026-01-12 - US-031
+- What was implemented: Unit tests for classifier functions
+- Files changed:
+  - `backend/tests/unit/regime/classifier.spec.ts` (created)
+- **Learnings:**
+  - Import type keyword for type-only imports in tests
+  - Helper function createPricePoints to generate test data with timestamps
+  - Test boundary conditions: exactly at threshold should fail (strict inequality)
+  - Test both individual classification (classifyWindow) and series classification (classifyRegime)
+---
+
+## 2026-01-12 - US-032
+- What was implemented: Unit tests for buildSegments function
+- Files changed:
+  - `backend/tests/unit/regime/segment_builder.spec.ts` (created)
+  - `backend/tests/unit/regime/classifier.spec.ts` (fixed import)
+- **Learnings:**
+  - Helper function createWindowLabel simplifies test data creation with sensible defaults
+  - Test both single segment and multi-segment scenarios
+  - Band calculations: median for midpoint, ((max-min)/median)*100 for width %
+  - TRENDING segments have null bandMidpoint and bandWidthPct
+  - Confidence scores must be in 0-1 range
+  - avgFeatures computed as average of all window features in segment
+  - Import WindowFeatures from window_features.ts, not classifier.ts
+---
