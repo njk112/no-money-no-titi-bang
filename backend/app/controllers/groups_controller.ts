@@ -165,4 +165,50 @@ export default class GroupsController {
 
     return response.json({ message: 'Group deleted successfully' })
   }
+
+  async stats({ response }: HttpContext) {
+    // Get profitability stats per group
+    // Join items with item_prices (via latest_price_id) and aggregate by group
+    const stats = await db
+      .from('item_groups')
+      .leftJoin('items', 'item_groups.id', 'items.group_id')
+      .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
+      .select('item_groups.id as group_id')
+      .select('item_groups.name as group_name')
+      .select('item_groups.slug as group_slug')
+      .select('item_groups.color as group_color')
+      .count('items.id as item_count')
+      .sum('item_prices.volume as total_volume')
+      .avg(
+        db.raw(
+          'CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL ' +
+            'THEN item_prices.high_price - item_prices.low_price END'
+        )
+      )
+      .as('avg_margin')
+      .sum(
+        db.raw(
+          'CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL AND items.buy_limit IS NOT NULL ' +
+            'THEN (item_prices.high_price - item_prices.low_price) * ' +
+            'CASE WHEN items.buy_limit < COALESCE(item_prices.volume, 0) THEN items.buy_limit ELSE COALESCE(item_prices.volume, 0) END ' +
+            'END'
+        )
+      )
+      .as('total_max_profit')
+      .groupBy('item_groups.id')
+      .orderByRaw('total_max_profit DESC NULLS LAST')
+
+    const data = stats.map((row: Record<string, unknown>) => ({
+      group_id: row.group_id,
+      group_name: row.group_name,
+      group_slug: row.group_slug,
+      group_color: row.group_color,
+      item_count: Number(row.item_count || 0),
+      total_volume: Number(row.total_volume || 0),
+      avg_margin: row.avg_margin != null ? Math.round(Number(row.avg_margin)) : 0,
+      total_max_profit: Number(row.total_max_profit || 0),
+    }))
+
+    return response.json(data)
+  }
 }
