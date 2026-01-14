@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Star, ChevronDown, X } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { FilterPanel } from '@/components/filter-panel'
+import { GroupStatistics } from '@/components/group-statistics'
 import { ItemsTable } from '@/components/items-table'
 import { TableSkeleton } from '@/components/table-skeleton'
 import { ErrorState } from '@/components/error-state'
@@ -122,6 +123,12 @@ export default function Dashboard() {
     setPage(1)
   }
 
+  const handleGroupStatsClick = (slug: string) => {
+    setSelectedGroups([slug])
+    setGroupFilterMode('include')
+    setPage(1)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -131,7 +138,8 @@ export default function Dashboard() {
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
-        <aside className="w-full lg:w-64 shrink-0">
+        <aside className="w-full lg:w-64 shrink-0 space-y-4">
+          <GroupStatistics onGroupClick={handleGroupStatsClick} pollInterval={60000} />
           <FilterPanel onResetFilters={handleResetFilters}>
             <div className="space-y-4">
               <div>

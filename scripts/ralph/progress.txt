@@ -334,3 +334,14 @@
   - Stats API returns array directly (not paginated)
 ---
 
+## 2026-01-14 - US-033
+- What was implemented: Added collapsible Group Statistics section to dashboard sidebar showing profitability stats per group with clickable rows to filter
+- Files changed: `frontend/components/group-statistics.tsx`, `frontend/app/page.tsx`
+- **Learnings:**
+  - Use shadcn/ui Collapsible component with `open` and `onOpenChange` state for controlled expand/collapse
+  - Format numbers with helper: K for thousands, M for millions, B for billions using `(num / divisor).toFixed(1) + suffix`
+  - Group click handler sets `selectedGroups` to single-item array and `groupFilterMode` to 'include' for quick filtering
+  - Use `setInterval` in useEffect for polling with cleanup: `return () => clearInterval(interval)`
+  - Column header labels placed at bottom of list to serve as legend (Group, Items, Avg Margin, Max Profit)
+---
+
