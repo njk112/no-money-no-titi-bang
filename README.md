@@ -2,6 +2,8 @@
 
 ./scripts/ralph/ralph.sh 25
 
+fix regime classifier to be able to run for individual users or add a lock on it
+
 # Initial Project Description
 
 No money no titi bang, is a OSRS trading focused project which aims to find profitable trades.
