@@ -44,6 +44,7 @@ async function request<T>(
 }
 
 export const api = {
+  baseUrl: BASE_URL,
   get: <T>(endpoint: string) => request<T>(endpoint),
   post: <T>(endpoint: string, body: unknown) =>
     request<T>(endpoint, {

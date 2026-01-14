@@ -1,14 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { Star, ExternalLink, Ban } from 'lucide-react'
+import { Star, ExternalLink, Ban, Download } from 'lucide-react'
 import { Modal } from '@/components/modal'
 import { LastRefreshed } from '@/components/last-refreshed'
+import { RegimeTimeline } from '@/components/regime-timeline'
+import { RegimeAnalysis } from '@/components/regime-analysis'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useItem } from '@/hooks/use-item'
+import { useRegimeSegments } from '@/hooks/use-regime-segments'
 import { useSettings } from '@/contexts/settings-context'
 import { cn } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 interface ItemDetailModalProps {
   itemId: number | null
@@ -38,10 +49,52 @@ function formatRelativeTime(isoString: string | null): string {
 
 export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
   const { item, isLoading, error } = useItem(isOpen ? itemId : null)
+  const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
   const { favorites, toggleFavorite, toggleBlocked } = useSettings()
   const [showBlockConfirm, setShowBlockConfirm] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json')
+  const [isExporting, setIsExporting] = useState(false)
 
   const isFavorited = itemId ? favorites.includes(itemId) : false
+
+  const handleExport = async () => {
+    if (!itemId || !item) return
+
+    setIsExporting(true)
+    try {
+      const url = `/api/regime/export/${itemId}?format=${exportFormat}`
+
+      if (exportFormat === 'csv') {
+        // For CSV, fetch as text and trigger download
+        const response = await fetch(`${api.baseUrl}${url}`)
+        const blob = await response.blob()
+        const downloadUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = `${item.name.replace(/\s+/g, '-')}-regime-${new Date().toISOString().split('T')[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(downloadUrl)
+        document.body.removeChild(a)
+      } else {
+        // For JSON, fetch and trigger download
+        const data = await api.get<unknown>(url)
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const downloadUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = `${item.name.replace(/\s+/g, '-')}-regime-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(downloadUrl)
+        document.body.removeChild(a)
+      }
+    } catch (err) {
+      console.error('Export failed:', err)
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -130,6 +183,47 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Regime Timeline Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Price Regime
+            </h3>
+            <RegimeTimeline segments={segments} isLoading={isLoadingRegime} />
+          </div>
+
+          {/* Regime Analysis Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Regime Analysis
+            </h3>
+            <RegimeAnalysis segments={segments} isLoading={isLoadingRegime} />
+            {segments.length > 0 && (
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                <Select
+                  value={exportFormat}
+                  onValueChange={(value: 'json' | 'csv') => setExportFormat(value)}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="csv">CSV</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  disabled={isExporting}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  {isExporting ? 'Exporting...' : 'Export Data'}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Current Prices Section */}

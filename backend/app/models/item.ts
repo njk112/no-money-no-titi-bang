@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, column, computed, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import ItemPrice from './item_price.js'
+import RegimeSegment from './regime_segment.js'
 
 export default class Item extends BaseModel {
   @column({ isPrimary: true })
@@ -28,6 +29,9 @@ export default class Item extends BaseModel {
   @column()
   declare latestPriceId: number | null
 
+  @column()
+  declare currentRegime: string | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
@@ -36,6 +40,9 @@ export default class Item extends BaseModel {
 
   @hasMany(() => ItemPrice)
   declare prices: HasMany<typeof ItemPrice>
+
+  @hasMany(() => RegimeSegment)
+  declare regimeSegments: HasMany<typeof RegimeSegment>
 
   @computed()
   get iconUrl(): string | null {

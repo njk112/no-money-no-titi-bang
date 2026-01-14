@@ -11,8 +11,9 @@ export default class SuggestionsController {
 
     const budget = parseInt(budgetParam, 10)
 
-    // Calculate score in SQL: (high - low) * buy_limit * log10(buy_limit + 1)
+    // Calculate score in SQL using realistic profit (margin * min(buy_limit, volume))
     // Sort and limit in database for efficiency
+    // Using CASE for SQLite compatibility (no LEAST/MIN with multiple scalar args)
     const items = await db.rawQuery(`
       SELECT
         items.id,
@@ -26,10 +27,20 @@ export default class SuggestionsController {
         ip.low_price,
         ip.high_time,
         ip.low_time,
+        ip.volume,
         (ip.high_price - ip.low_price) as profit_margin,
-        (ip.high_price - ip.low_price) * items.buy_limit as max_profit,
-        MIN(? / ip.low_price, items.buy_limit) as suggested_quantity,
-        MIN(? / ip.low_price, items.buy_limit) * (ip.high_price - ip.low_price) as estimated_profit
+        (ip.high_price - ip.low_price) *
+          CASE WHEN items.buy_limit < COALESCE(ip.volume, 0) THEN items.buy_limit ELSE COALESCE(ip.volume, 0) END as max_profit,
+        CASE
+          WHEN ? / ip.low_price < items.buy_limit AND ? / ip.low_price < COALESCE(ip.volume, 0) THEN ? / ip.low_price
+          WHEN items.buy_limit < COALESCE(ip.volume, 0) THEN items.buy_limit
+          ELSE COALESCE(ip.volume, 0)
+        END as suggested_quantity,
+        CASE
+          WHEN ? / ip.low_price < items.buy_limit AND ? / ip.low_price < COALESCE(ip.volume, 0) THEN ? / ip.low_price
+          WHEN items.buy_limit < COALESCE(ip.volume, 0) THEN items.buy_limit
+          ELSE COALESCE(ip.volume, 0)
+        END * (ip.high_price - ip.low_price) as estimated_profit
       FROM items
       INNER JOIN item_prices ip ON items.id = ip.item_id
       INNER JOIN (
@@ -41,9 +52,11 @@ export default class SuggestionsController {
         AND ip.low_price > 0
         AND (ip.high_price - ip.low_price) > 0
         AND items.buy_limit > 0
-      ORDER BY (ip.high_price - ip.low_price) * items.buy_limit DESC
+        AND COALESCE(ip.volume, 0) > 0
+      ORDER BY (ip.high_price - ip.low_price) *
+        CASE WHEN items.buy_limit < COALESCE(ip.volume, 0) THEN items.buy_limit ELSE COALESCE(ip.volume, 0) END DESC
       LIMIT 6
-    `, [budget, budget, budget])
+    `, [budget, budget, budget, budget, budget, budget, budget])
 
     const data = items.map((item: Record<string, unknown>) => ({
       id: item.id,

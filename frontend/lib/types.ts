@@ -34,6 +34,7 @@ export interface ItemsParams {
   min_volume?: number
   max_volume?: number
   members?: boolean
+  regime?: 'RANGE_BOUND' | 'TRENDING'
   sort?: 'profit' | 'margin' | 'price' | 'name' | 'buy_limit'
   order?: 'asc' | 'desc'
 }

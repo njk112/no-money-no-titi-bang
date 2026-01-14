@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useSettings } from '@/contexts/settings-context'
+import { useRegimeThresholds } from '@/hooks/use-regime-thresholds'
 import { SYSTEM_DEFAULT_FILTERS } from '@/lib/constants'
 import { api } from '@/lib/api'
 import type { Item } from '@/lib/types'
@@ -29,6 +30,40 @@ export default function SettingsPage() {
   const [minVolume, setMinVolume] = useState(defaultFilters.minVolume)
   const [maxVolume, setMaxVolume] = useState(defaultFilters.maxVolume)
   const [showSaved, setShowSaved] = useState(false)
+
+  // Regime thresholds
+  const {
+    thresholds,
+    isLoading: isLoadingThresholds,
+    error: thresholdsError,
+    updateThresholds,
+    runCalibration,
+    suggestedThresholds,
+    isCalibrating,
+  } = useRegimeThresholds()
+
+  const [chopMax, setChopMax] = useState('')
+  const [rangeNormMax, setRangeNormMax] = useState('')
+  const [slopeNormMax, setSlopeNormMax] = useState('')
+  const [crossRateMin, setCrossRateMin] = useState('')
+  const [windowSize, setWindowSize] = useState('')
+  const [isSavingThresholds, setIsSavingThresholds] = useState(false)
+  const [thresholdsSaved, setThresholdsSaved] = useState(false)
+  const [thresholdsSaveError, setThresholdsSaveError] = useState<string | null>(null)
+  const [isRecalculating, setIsRecalculating] = useState(false)
+  const [recalculateResult, setRecalculateResult] = useState<string | null>(null)
+  const [recalculateError, setRecalculateError] = useState<string | null>(null)
+
+  // Sync threshold inputs when thresholds load
+  useEffect(() => {
+    if (thresholds) {
+      setChopMax(String(thresholds.chop_max))
+      setRangeNormMax(String(thresholds.range_norm_max))
+      setSlopeNormMax(String(thresholds.slope_norm_max))
+      setCrossRateMin(String(thresholds.cross_rate_min))
+      setWindowSize(String(thresholds.window_size))
+    }
+  }, [thresholds])
 
   // Sync local state when defaultFilters changes (e.g., from another tab)
   useEffect(() => {
@@ -110,6 +145,68 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveThresholds = async () => {
+    setIsSavingThresholds(true)
+    setThresholdsSaveError(null)
+    try {
+      await updateThresholds({
+        chop_max: parseFloat(chopMax),
+        range_norm_max: parseFloat(rangeNormMax),
+        slope_norm_max: parseFloat(slopeNormMax),
+        cross_rate_min: parseFloat(crossRateMin),
+        window_size: parseInt(windowSize, 10),
+      })
+      setThresholdsSaved(true)
+      setTimeout(() => setThresholdsSaved(false), 2000)
+    } catch {
+      setThresholdsSaveError('Failed to save thresholds')
+    } finally {
+      setIsSavingThresholds(false)
+    }
+  }
+
+  const handleRunCalibration = async () => {
+    try {
+      await runCalibration()
+    } catch {
+      // Error already handled by hook
+    }
+  }
+
+  const handleApplySuggestions = () => {
+    if (suggestedThresholds) {
+      setChopMax(String(suggestedThresholds.suggested.chop_max))
+      setRangeNormMax(String(suggestedThresholds.suggested.range_norm_max))
+      setSlopeNormMax(String(suggestedThresholds.suggested.slope_norm_max))
+      setCrossRateMin(String(suggestedThresholds.suggested.cross_rate_min))
+    }
+  }
+
+  const handleRecalculate = async () => {
+    if (!window.confirm('This may take a while. Continue?')) {
+      return
+    }
+
+    setIsRecalculating(true)
+    setRecalculateResult(null)
+    setRecalculateError(null)
+
+    try {
+      const result = await api.post<{ itemsProcessed: number; segmentsCreated: number }>(
+        '/api/regime/recalculate',
+        {}
+      )
+      setRecalculateResult(
+        `Recalculated ${result.itemsProcessed} items, ${result.segmentsCreated} segments created`
+      )
+      setTimeout(() => setRecalculateResult(null), 5000)
+    } catch {
+      setRecalculateError('Failed to recalculate segments')
+    } finally {
+      setIsRecalculating(false)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
@@ -184,6 +281,171 @@ export default function SettingsPage() {
           </div>
           {showSaved && (
             <p className="text-sm text-green-600">Defaults saved successfully!</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Regime Classification Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Regime Classification</CardTitle>
+          <CardDescription>
+            Configure thresholds for classifying price regimes as range-bound or trending.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingThresholds ? (
+            <p className="text-muted-foreground">Loading thresholds...</p>
+          ) : thresholdsError ? (
+            <p className="text-destructive">Failed to load thresholds</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="chopMax">Chop Max</Label>
+                  <Input
+                    id="chopMax"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.25"
+                    value={chopMax}
+                    onChange={(e) => setChopMax(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Maximum chop ratio for range-bound (0-1)
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.chop.p25.toFixed(4)}, p50: ${suggestedThresholds.stats.chop.p50.toFixed(4)}, p75: ${suggestedThresholds.stats.chop.p75.toFixed(4)}`}>
+                        Suggested: {suggestedThresholds.suggested.chop_max.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="rangeNormMax">Range % Max</Label>
+                  <Input
+                    id="rangeNormMax"
+                    type="number"
+                    step="0.001"
+                    placeholder="0.02"
+                    value={rangeNormMax}
+                    onChange={(e) => setRangeNormMax(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Maximum normalized range for range-bound
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.range_norm.p25.toFixed(6)}, p50: ${suggestedThresholds.stats.range_norm.p50.toFixed(6)}, p75: ${suggestedThresholds.stats.range_norm.p75.toFixed(6)}`}>
+                        Suggested: {suggestedThresholds.suggested.range_norm_max.toFixed(6)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="slopeNormMax">Slope Max</Label>
+                  <Input
+                    id="slopeNormMax"
+                    type="number"
+                    step="0.0001"
+                    placeholder="0.0005"
+                    value={slopeNormMax}
+                    onChange={(e) => setSlopeNormMax(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Maximum normalized slope for range-bound
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.slope_norm.p25.toFixed(8)}, p50: ${suggestedThresholds.stats.slope_norm.p50.toFixed(8)}, p75: ${suggestedThresholds.stats.slope_norm.p75.toFixed(8)}`}>
+                        Suggested: {suggestedThresholds.suggested.slope_norm_max.toFixed(8)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="crossRateMin">Cross Rate Min</Label>
+                  <Input
+                    id="crossRateMin"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.08"
+                    value={crossRateMin}
+                    onChange={(e) => setCrossRateMin(e.target.value)}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Minimum mean-crossing rate for range-bound (0-1)
+                    {suggestedThresholds && (
+                      <span className="block text-blue-600" title={`p25: ${suggestedThresholds.stats.cross_rate.p25.toFixed(4)}, p50: ${suggestedThresholds.stats.cross_rate.p50.toFixed(4)}, p75: ${suggestedThresholds.stats.cross_rate.p75.toFixed(4)}`}>
+                        Suggested: {suggestedThresholds.suggested.cross_rate_min.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="windowSize">Window Size</Label>
+                <Input
+                  id="windowSize"
+                  type="number"
+                  placeholder="24"
+                  value={windowSize}
+                  onChange={(e) => setWindowSize(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Number of price points per analysis window
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={handleSaveThresholds}
+                  disabled={isSavingThresholds}
+                >
+                  {isSavingThresholds ? 'Saving...' : 'Save Thresholds'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRunCalibration}
+                  disabled={isCalibrating}
+                >
+                  {isCalibrating ? 'Calibrating...' : 'Auto-Calibrate'}
+                </Button>
+                {suggestedThresholds && (
+                  <Button
+                    variant="outline"
+                    onClick={handleApplySuggestions}
+                  >
+                    Apply Suggestions
+                  </Button>
+                )}
+              </div>
+              {suggestedThresholds && (
+                <p className="text-xs text-muted-foreground">
+                  Calibrated from {suggestedThresholds.meta.items_sampled} items, {suggestedThresholds.meta.windows_analyzed} windows analyzed
+                </p>
+              )}
+              {thresholdsSaved && (
+                <p className="text-sm text-green-600">Thresholds saved successfully!</p>
+              )}
+              {thresholdsSaveError && (
+                <p className="text-sm text-destructive">{thresholdsSaveError}</p>
+              )}
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm text-muted-foreground mb-2">
+                  After changing thresholds, recalculate all regime segments to apply the new settings.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleRecalculate}
+                  disabled={isRecalculating}
+                >
+                  {isRecalculating ? 'Recalculating...' : 'Recalculate All Segments'}
+                </Button>
+              </div>
+              {recalculateResult && (
+                <p className="text-sm text-green-600">{recalculateResult}</p>
+              )}
+              {recalculateError && (
+                <p className="text-sm text-destructive">{recalculateError}</p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
