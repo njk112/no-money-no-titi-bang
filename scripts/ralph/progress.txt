@@ -1,1 +1,148 @@
+## Codebase Patterns
+- Server-side API: Use `process.env.API_URL` (not NEXT_PUBLIC_) for server-side requests
+- Cookie forwarding: Pass cookies string from `request.headers.get('cookie')` to serverApi methods
+- Next.js API routes: Place in `/app/api/[endpoint]/route.ts` format
+- Dynamic route params (Next.js 15): `{ params }: { params: Promise<{ id: string }> }` - must await params
 
+---
+
+## 2026-01-14 - US-001
+- What was implemented: Server-side API utility for making backend requests from Next.js API routes
+- Files changed: `frontend/lib/server-api.ts` (created)
+- **Learnings:**
+  - Modeled after existing `frontend/lib/api.ts` but simplified for server-side use
+  - Uses `API_URL` env var (non-public) instead of `NEXT_PUBLIC_API_URL`
+  - Supports GET, POST, PUT, DELETE with generic TypeScript types
+  - Accepts optional cookies string for authentication forwarding
+---
+
+## 2026-01-14 - US-002
+- What was implemented: Items list API route for proxying item listing requests
+- Files changed: `frontend/app/api/items/route.ts` (created)
+- **Learnings:**
+  - Next.js API routes use `NextRequest` and `NextResponse` from `next/server`
+  - Access query params via `new URL(request.url).searchParams`
+  - Forward cookies with `request.headers.get('cookie')`
+  - Use `searchParams.toString()` to forward all query params at once
+---
+
+## 2026-01-14 - US-003
+- What was implemented: Items batch API route for fetching multiple items by ID
+- Files changed: `frontend/app/api/items/batch/route.ts` (created)
+- **Learnings:**
+  - Batch endpoint returns `Item[]` directly (not wrapped in response object)
+  - For single query param forwarding, use `searchParams.get('paramName')` instead of `toString()`
+---
+
+## 2026-01-14 - US-004
+- What was implemented: Single Item API route for fetching individual item details
+- Files changed: `frontend/app/api/items/[id]/route.ts` (created)
+- **Learnings:**
+  - Dynamic route params in Next.js 15 App Router: `{ params }: { params: Promise<{ id: string }> }` - params is a Promise that must be awaited
+  - Single item endpoint returns `Item` type directly
+---
+
+## 2026-01-14 - US-005
+- What was implemented: Suggestions API route for proxying suggestion requests
+- Files changed: `frontend/app/api/suggestions/route.ts` (created)
+- **Learnings:**
+  - Suggestions endpoint uses `SuggestionsResponse` type which wraps `SuggestionItem[]` in `data` property
+  - Follows same pattern as items list route - forward all query params using `searchParams.toString()`
+---
+
+## 2026-01-14 - US-006
+- What was implemented: Sync Status API route for proxying sync status requests
+- Files changed: `frontend/app/api/sync/status/route.ts` (created)
+- **Learnings:**
+  - Sync status endpoint returns `{ last_synced_at: string | null }` - simple response structure
+  - No query params needed - just forward cookies for auth
+  - Defined local interface for response type since not exported from types.ts
+---
+
+## 2026-01-14 - US-007
+- What was implemented: Regime Segments API route for proxying regime segment requests
+- Files changed: `frontend/app/api/regime/segments/[itemId]/route.ts` (created)
+- **Learnings:**
+  - Regime segments endpoint returns `RegimeSegment[]` - type imported from `@/hooks/use-regime-segments`
+  - Supports optional query params (startTs, endTs) - forward using `searchParams.toString()`
+  - Uses dynamic route param `itemId` (await params pattern)
+---
+
+## 2026-01-14 - US-008
+- What was implemented: Regime Thresholds API routes for GET and PUT operations
+- Files changed: `frontend/app/api/regime/thresholds/route.ts` (created)
+- **Learnings:**
+  - Can export multiple HTTP method handlers (GET, PUT) from same route.ts file
+  - For PUT requests, parse body with `await request.json()` before forwarding
+  - Types `Thresholds` and `ThresholdUpdates` imported from `@/hooks/use-regime-thresholds`
+---
+
+## 2026-01-14 - US-009
+- What was implemented: Regime Calibrate API route for proxying auto-calibration requests
+- Files changed: `frontend/app/api/regime/calibrate/route.ts` (created)
+- **Learnings:**
+  - Calibrate endpoint takes optional `{ itemIds?: number[] }` body
+  - Returns `SuggestedThresholds` type (imported from use-regime-thresholds hook)
+  - Follows same POST pattern as thresholds PUT - parse body with `await request.json()`
+---
+
+## 2026-01-14 - US-010
+- What was implemented: Regime Recalculate API route for proxying recalculation requests
+- Files changed: `frontend/app/api/regime/recalculate/route.ts` (created)
+- **Learnings:**
+  - Recalculate endpoint takes empty body `{}` and returns `{ itemsProcessed: number; segmentsCreated: number }`
+  - Local interface defined for response type since it's specific to this endpoint
+  - Same POST pattern as calibrate - parse body with `await request.json()`
+---
+
+## 2026-01-14 - US-011
+- What was implemented: Regime Export API route for proxying export requests (JSON and CSV)
+- Files changed: `frontend/app/api/regime/export/[itemId]/route.ts` (created)
+- **Learnings:**
+  - Export endpoint supports dual response formats: JSON (default) and CSV (via `format=csv` query param)
+  - For CSV responses, cannot use `serverApi` since it always parses as JSON - need raw `fetch()` and return as `text()`
+  - CSV response requires forwarding `Content-Type: text/csv` and `Content-Disposition` headers from backend
+  - Use `new NextResponse(csvContent, { headers: {...} })` for non-JSON responses
+  - Dynamic route param `itemId` uses same await params pattern as other routes
+---
+
+## 2026-01-14 - US-012
+- What was implemented: Updated frontend API client to use relative URLs instead of direct backend URLs
+- Files changed: `frontend/lib/api.ts`, `frontend/components/item-detail-modal.tsx`
+- **Learnings:**
+  - Client-side api.ts now uses relative URLs (e.g., `/api/items`) which route through Next.js API routes
+  - Removed `NEXT_PUBLIC_API_URL` env var usage and `baseUrl` export from api object
+  - Export functionality in item-detail-modal.tsx simplified - both JSON and CSV use same fetch pattern with relative URL
+  - Export download now uses format in filename dynamically: `${exportFormat}` instead of hardcoded extension
+---
+
+## 2026-01-14 - US-013
+- What was implemented: Environment configuration for frontend with API_URL documentation
+- Files changed: `frontend/.env.example` (created), `frontend/.gitignore` (modified)
+- **Learnings:**
+  - Default `.gitignore` in Next.js ignores all `.env*` files - need to add `!.env.example` exception to track example files
+  - API_URL is server-side only (no NEXT_PUBLIC_ prefix) and defaults to `http://localhost:3333`
+  - No `.env.local.example` needed since API_URL has a sensible default in code
+  - NEXT_PUBLIC_API_URL was never in frontend `.env.example` since there was no such file before this PR
+---
+
+## 2026-01-14 - US-014
+- What was implemented: End-to-end verification of all functionality with backend URL obfuscation
+- Files changed: None (verification only)
+- **Verified functionality:**
+  - Items list loads with pagination (confirmed)
+  - Item search and filtering works (tested with "abyssal" search)
+  - Item detail modal opens and displays data (Torva full helm, Abyssal dagger)
+  - Regime segments display correctly (Range-Bound and Trending indicators shown)
+  - Regime threshold editing available (Settings page with all threshold inputs)
+  - Calibration and recalculation buttons present (Auto-Calibrate, Recalculate All Segments)
+  - Data export works (JSON export via /api/regime/export/[itemId]?format=json returns 200)
+  - Suggestions page loads and returns results with budget input
+  - Sync status displays ("Last refreshed: X ago" shown)
+  - Backend URL NOT exposed in browser Network tab - all requests go to localhost:3000/api/* routes
+- **Learnings:**
+  - Network request interception confirms all API calls route through Next.js API routes (localhost:3000/api/*)
+  - No direct calls to backend (localhost:3333) visible in browser DevTools
+  - The obfuscation layer is transparent to the frontend - all existing hooks work unchanged
+  - Pre-existing lint warnings in codebase (unrelated to API routes) don't affect functionality
+---
