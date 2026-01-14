@@ -10,8 +10,8 @@
 - Models: Relationships via `@hasMany()` and `@belongsTo()` decorators
 - Seeders: Located in `backend/database/seeders/`
 - Seeders: Create with `node ace make:seeder <name>`, run with `node ace db:seed --files="./database/seeders/<name>.ts"`
-- Commands: Located in `backend/app/commands/`
-- Commands: Create with `node ace make:command <name>`
+- Commands: Located in `backend/commands/`
+- Commands: Create with `node ace make:command <name>`, run with `node ace <command:name>`
 - Frontend hooks: Located in `frontend/hooks/`, use 'use client' directive
 - Frontend types: Located in `frontend/lib/types.ts`
 - API: Import `api` from '@/lib/api', use `api.get<T>()` with type parameter
@@ -98,5 +98,37 @@
   - For show endpoint, use `Item.query().where('id', params.id).preload('group').first()` instead of `Item.find()` to enable preloading
   - Include group_id in select statement when preloading relationships for proper association
   - Return null for missing relationships rather than omitting the field for consistent API responses
+---
+
+## 2026-01-14 - US-010
+- What was implemented: Created PATCH /api/items/:id/group endpoint for updating a single item's group
+- Files changed: `backend/app/controllers/items_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `request.body()` to get JSON body in AdonisJS (not `request.input()` which is for query params)
+  - Use `DateTime.now()` from luxon for setting timestamps
+  - Use `await item.load('group')` to load a relationship on an already-fetched model instance
+  - Validate foreign keys by attempting to find the related record with `Model.find(id)`
+---
+
+## 2026-01-14 - US-011
+- What was implemented: Created PATCH /api/items/batch-group endpoint for batch updating multiple items' groups at once
+- Files changed: `backend/app/controllers/items_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `Item.query().whereIn('id', ids).update({...})` for bulk updates in AdonisJS Lucid
+  - Bulk update returns the count of updated rows directly
+  - Use `DateTime.now().toSQL()` to get SQL-compatible timestamp for raw updates
+  - Place specific routes (like `/api/items/batch-group`) before parameterized routes (like `/api/items/:id`) to avoid path conflicts
+---
+
+## 2026-01-14 - US-012
+- What was implemented: Created items:classify command that classifies all items into groups based on keyword matching
+- Files changed: `backend/commands/classify_items.ts`
+- **Learnings:**
+  - Commands are created in `backend/commands/` (not `backend/app/commands/`) by `node ace make:command <name>`
+  - Commands need `startApp: true` in options to access database/models
+  - Use `static commandName = 'items:classify'` to set the ace command name
+  - Iterate groups in sort_order to ensure first match wins
+  - Keywords match case-insensitively using `name.toLowerCase().includes(keyword.toLowerCase())`
+  - Command is idempotent by re-processing all items on each run
 ---
 
