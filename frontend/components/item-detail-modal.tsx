@@ -186,7 +186,10 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                   />
                 </button>
                 <button
-                  onClick={() => toggleBlocked(item.id)}
+                  onClick={() => {
+                    toggleBlocked(item.id)
+                    onClose()
+                  }}
                   className="p-1 hover:bg-muted rounded"
                   title="Block item"
                 >
