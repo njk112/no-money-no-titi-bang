@@ -8,6 +8,7 @@ interface UseItemResult {
   item: Item | null
   isLoading: boolean
   error: Error | null
+  refetch: () => void
 }
 
 export function useItem(itemId: number | null): UseItemResult {
@@ -42,5 +43,6 @@ export function useItem(itemId: number | null): UseItemResult {
     item,
     isLoading,
     error,
+    refetch: fetchItem,
   }
 }

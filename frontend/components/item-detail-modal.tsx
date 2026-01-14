@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Star, ExternalLink, Ban, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { Modal } from '@/components/modal'
 import { LastRefreshed } from '@/components/last-refreshed'
 import { RegimeTimeline } from '@/components/regime-timeline'
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useItem } from '@/hooks/use-item'
+import { useGroups } from '@/hooks/use-groups'
 import { useRegimeSegments } from '@/hooks/use-regime-segments'
 import { useSettings } from '@/contexts/settings-context'
 import { cn } from '@/lib/utils'
@@ -48,14 +50,34 @@ function formatRelativeTime(isoString: string | null): string {
 }
 
 export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
-  const { item, isLoading, error } = useItem(isOpen ? itemId : null)
+  const { item, isLoading, error, refetch } = useItem(isOpen ? itemId : null)
+  const { groups } = useGroups()
   const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
   const { favorites, toggleFavorite, toggleBlocked } = useSettings()
   const [showBlockConfirm, setShowBlockConfirm] = useState(false)
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json')
   const [isExporting, setIsExporting] = useState(false)
+  const [isSavingGroup, setIsSavingGroup] = useState(false)
 
   const isFavorited = itemId ? favorites.includes(itemId) : false
+
+  const handleGroupChange = async (groupId: string) => {
+    if (!itemId) return
+
+    setIsSavingGroup(true)
+    try {
+      await api.patch(`/api/items/${itemId}/group`, {
+        groupId: groupId === 'unclassified' ? null : Number(groupId)
+      })
+      toast.success('Group updated successfully')
+      refetch()
+    } catch (err) {
+      toast.error('Failed to update group')
+      console.error('Failed to update group:', err)
+    } finally {
+      setIsSavingGroup(false)
+    }
+  }
 
   const handleExport = async () => {
     if (!itemId || !item) return
@@ -195,6 +217,36 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Group Selection */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+              Change Group
+            </h3>
+            <Select
+              value={item.group?.id.toString() ?? 'unclassified'}
+              onValueChange={handleGroupChange}
+              disabled={isSavingGroup}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unclassified">Unclassified</SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={group.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: group.color }}
+                      />
+                      {group.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Regime Timeline Section */}
