@@ -58,3 +58,30 @@
   - No query params needed - just forward cookies for auth
   - Defined local interface for response type since not exported from types.ts
 ---
+
+## 2026-01-14 - US-007
+- What was implemented: Regime Segments API route for proxying regime segment requests
+- Files changed: `frontend/app/api/regime/segments/[itemId]/route.ts` (created)
+- **Learnings:**
+  - Regime segments endpoint returns `RegimeSegment[]` - type imported from `@/hooks/use-regime-segments`
+  - Supports optional query params (startTs, endTs) - forward using `searchParams.toString()`
+  - Uses dynamic route param `itemId` (await params pattern)
+---
+
+## 2026-01-14 - US-008
+- What was implemented: Regime Thresholds API routes for GET and PUT operations
+- Files changed: `frontend/app/api/regime/thresholds/route.ts` (created)
+- **Learnings:**
+  - Can export multiple HTTP method handlers (GET, PUT) from same route.ts file
+  - For PUT requests, parse body with `await request.json()` before forwarding
+  - Types `Thresholds` and `ThresholdUpdates` imported from `@/hooks/use-regime-thresholds`
+---
+
+## 2026-01-14 - US-009
+- What was implemented: Regime Calibrate API route for proxying auto-calibration requests
+- Files changed: `frontend/app/api/regime/calibrate/route.ts` (created)
+- **Learnings:**
+  - Calibrate endpoint takes optional `{ itemIds?: number[] }` body
+  - Returns `SuggestedThresholds` type (imported from use-regime-thresholds hook)
+  - Follows same POST pattern as thresholds PUT - parse body with `await request.json()`
+---
