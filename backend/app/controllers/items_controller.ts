@@ -1,5 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import Item from '#models/item'
+import ItemGroup from '#models/item_group'
 
 export default class ItemsController {
   async index({ request, response }: HttpContext) {
@@ -325,6 +327,47 @@ export default class ItemsController {
       selling_low: sellingLow,
       ge_tracker_url: item.geTrackerUrl,
       volume: latestPrice?.volume ?? null,
+      group: item.group
+        ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+        : null,
+    })
+  }
+
+  async updateGroup({ params, request, response }: HttpContext) {
+    const item = await Item.find(params.id)
+
+    if (!item) {
+      return response.notFound({ message: 'Item not found' })
+    }
+
+    const { groupId } = request.body()
+
+    // Validate groupId if not null
+    if (groupId !== null) {
+      if (typeof groupId !== 'number' || !Number.isInteger(groupId)) {
+        return response.badRequest({ message: 'groupId must be an integer or null' })
+      }
+
+      const group = await ItemGroup.find(groupId)
+      if (!group) {
+        return response.badRequest({ message: 'Invalid groupId: group does not exist' })
+      }
+    }
+
+    // Update item's group and classified_at timestamp
+    item.groupId = groupId
+    item.classifiedAt = DateTime.now()
+    await item.save()
+
+    // Reload item with group relationship
+    await item.load('group')
+
+    return response.json({
+      id: item.id,
+      name: item.name,
+      icon_url: item.iconUrl,
+      buy_limit: item.buyLimit,
+      members: item.members,
       group: item.group
         ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
         : null,
