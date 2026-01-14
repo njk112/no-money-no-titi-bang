@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { serverApi, ServerApiError } from '@/lib/server-api'
-
-const API_URL = process.env.API_URL || 'http://localhost:3333'
+import { serverApi, ServerApiError, API_URL } from '@/lib/server-api'
 
 interface ExportDataPoint {
   timestamp: string
