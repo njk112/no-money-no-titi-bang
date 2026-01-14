@@ -23,6 +23,8 @@ export interface RegimeSegment {
   confidenceScore: number | null
   /** Average of all window features in this segment */
   avgFeatures: WindowFeatures
+  /** Slope direction: -1 = down, 0 = flat, 1 = up */
+  slopeDirection: -1 | 0 | 1
 }
 
 /**
@@ -66,7 +68,7 @@ function calculateConfidenceScore(
  */
 function averageFeatures(features: WindowFeatures[]): WindowFeatures {
   if (features.length === 0) {
-    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0 }
+    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0, rawSlope: 0 }
   }
 
   const sum = features.reduce(
@@ -75,8 +77,9 @@ function averageFeatures(features: WindowFeatures[]): WindowFeatures {
       rangeNorm: acc.rangeNorm + f.rangeNorm,
       slopeNorm: acc.slopeNorm + f.slopeNorm,
       crossRate: acc.crossRate + f.crossRate,
+      rawSlope: acc.rawSlope + f.rawSlope,
     }),
-    { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0 }
+    { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0, rawSlope: 0 }
   )
 
   const n = features.length
@@ -85,7 +88,22 @@ function averageFeatures(features: WindowFeatures[]): WindowFeatures {
     rangeNorm: sum.rangeNorm / n,
     slopeNorm: sum.slopeNorm / n,
     crossRate: sum.crossRate / n,
+    rawSlope: sum.rawSlope / n,
   }
+}
+
+/**
+ * Determine slope direction from average raw slope.
+ * Uses a small threshold to avoid noise.
+ */
+function getSlopeDirection(avgRawSlope: number, median: number): -1 | 0 | 1 {
+  // Normalize slope relative to price magnitude to determine significance
+  const normalizedSlope = median > 0 ? avgRawSlope / median : 0
+  const threshold = 0.0001 // Small threshold for "flat"
+
+  if (normalizedSlope > threshold) return 1  // Up
+  if (normalizedSlope < -threshold) return -1 // Down
+  return 0 // Flat
 }
 
 /**
@@ -154,6 +172,11 @@ function finalizeSegment(windowLabels: WindowLabel[], prices: number[]): RegimeS
     }
   }
 
+  // Calculate slope direction
+  const segmentPricesForSlope = prices.slice(first.startIdx, last.endIdx + 1)
+  const medianPrice = segmentPricesForSlope.length > 0 ? computeMedian(segmentPricesForSlope) : 0
+  const slopeDirection = getSlopeDirection(avgFeatures.rawSlope, medianPrice)
+
   return {
     startIdx: first.startIdx,
     endIdx: last.endIdx,
@@ -164,5 +187,6 @@ function finalizeSegment(windowLabels: WindowLabel[], prices: number[]): RegimeS
     bandWidthPct,
     confidenceScore,
     avgFeatures,
+    slopeDirection,
   }
 }

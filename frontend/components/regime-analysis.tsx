@@ -1,8 +1,14 @@
 'use client'
 
 import { useMemo } from 'react'
+import { Info } from 'lucide-react'
 import type { RegimeSegment } from '@/hooks/use-regime-segments'
 import { cn } from '@/lib/utils'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface RegimeAnalysisProps {
   segments: RegimeSegment[]
@@ -18,6 +24,72 @@ function getConfidenceLevel(score: number | null): { label: string; className: s
   if (score >= 0.7) return { label: 'High', className: 'bg-green-100 text-green-700' }
   if (score >= 0.4) return { label: 'Medium', className: 'bg-yellow-100 text-yellow-700' }
   return { label: 'Low', className: 'bg-red-100 text-red-700' }
+}
+
+const featureExplanations = {
+  chop: {
+    title: 'Chop (Directional Efficiency)',
+    description: 'Measures how much of the total price movement is "net" movement vs back-and-forth oscillation.',
+    examples: [
+      { label: 'Low (0.1)', meaning: 'Price zigzags a lot - moved 100gp total but only 10gp net. Good for flipping!' },
+      { label: 'High (0.8)', meaning: 'Price moves steadily in one direction - trending market.' },
+    ],
+  },
+  rangeNorm: {
+    title: 'Range % (Price Band Width)',
+    description: 'How wide is the gap between the highest and lowest prices, relative to the item\'s value.',
+    examples: [
+      { label: 'Low (0.01)', meaning: 'Tight 1% band - stable prices, predictable flipping range.' },
+      { label: 'High (0.10)', meaning: 'Wide 10% swings - volatile, risky for flipping.' },
+    ],
+  },
+  slopeNorm: {
+    title: 'Slope (Trend Direction)',
+    description: 'Is the price trending up or down over time? Based on a linear regression line.',
+    examples: [
+      { label: 'Low (0.0001)', meaning: 'Flat - no clear trend, price bouncing around the same level.' },
+      { label: 'High (0.001)', meaning: 'Tilted - price is climbing or falling steadily.' },
+    ],
+  },
+  crossRate: {
+    title: 'Cross Rate (Mean Reversion)',
+    description: 'How often does the price cross its average? High crossing = price keeps returning to the middle.',
+    examples: [
+      { label: 'High (0.15)', meaning: 'Crosses average frequently - mean-reverting, great for flipping!' },
+      { label: 'Low (0.02)', meaning: 'Rarely crosses - price stays above or below average (trending).' },
+    ],
+  },
+}
+
+interface InfoTooltipProps {
+  feature: keyof typeof featureExplanations
+}
+
+function InfoTooltip({ feature }: InfoTooltipProps) {
+  const info = featureExplanations[feature]
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className="text-muted-foreground hover:text-foreground transition-colors">
+          <Info className="w-3.5 h-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-sm">
+        <div className="space-y-2">
+          <p className="font-medium">{info.title}</p>
+          <p className="text-muted-foreground">{info.description}</p>
+          <div className="space-y-1 pt-1 border-t">
+            {info.examples.map((ex, i) => (
+              <div key={i} className="text-xs">
+                <span className="font-medium">{ex.label}:</span>{' '}
+                <span className="text-muted-foreground">{ex.meaning}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function RegimeAnalysis({ segments, isLoading }: RegimeAnalysisProps) {
@@ -74,19 +146,31 @@ export function RegimeAnalysis({ segments, isLoading }: RegimeAnalysisProps) {
       {/* Window Features Grid */}
       <div className="grid grid-cols-4 gap-3 text-sm">
         <div className="p-2 bg-muted/50 rounded">
-          <div className="text-xs text-muted-foreground">Chop</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Chop</span>
+            <InfoTooltip feature="chop" />
+          </div>
           <div className="font-medium">{formatFeatureValue(currentSegment.chop)}</div>
         </div>
         <div className="p-2 bg-muted/50 rounded">
-          <div className="text-xs text-muted-foreground">Range %</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Range %</span>
+            <InfoTooltip feature="rangeNorm" />
+          </div>
           <div className="font-medium">{formatFeatureValue(currentSegment.range_norm)}</div>
         </div>
         <div className="p-2 bg-muted/50 rounded">
-          <div className="text-xs text-muted-foreground">Slope</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Slope</span>
+            <InfoTooltip feature="slopeNorm" />
+          </div>
           <div className="font-medium">{formatFeatureValue(currentSegment.slope_norm, 6)}</div>
         </div>
         <div className="p-2 bg-muted/50 rounded">
-          <div className="text-xs text-muted-foreground">Cross Rate</div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Cross Rate</span>
+            <InfoTooltip feature="crossRate" />
+          </div>
           <div className="font-medium">{formatFeatureValue(currentSegment.cross_rate)}</div>
         </div>
       </div>

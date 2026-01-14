@@ -21,6 +21,7 @@ export interface RegimeSegment {
   band_midpoint: number | null
   band_width_pct: number | null
   confidence_score: number | null
+  slope_direction: -1 | 0 | 1
 }
 
 interface UseRegimeSegmentsOptions {

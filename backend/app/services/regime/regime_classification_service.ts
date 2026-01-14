@@ -70,6 +70,7 @@ export class RegimeClassificationService {
         bandMidpoint: segment.bandMidpoint,
         bandWidthPct: segment.bandWidthPct,
         confidenceScore: segment.confidenceScore,
+        slopeDirection: segment.slopeDirection,
       })
     }
 

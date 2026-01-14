@@ -12,6 +12,8 @@ export interface WindowFeatures {
   slopeNorm: number
   /** Mean-crossing rate: frequency of crossing the mean price */
   crossRate: number
+  /** Raw slope value (positive = up, negative = down) */
+  rawSlope: number
 }
 
 const EPSILON = 1e-10
@@ -48,11 +50,11 @@ export function computeWindowFeatures(prices: number[]): WindowFeatures {
 
   // Handle edge cases
   if (n === 0) {
-    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0 }
+    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0, rawSlope: 0 }
   }
 
   if (n === 1) {
-    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0 }
+    return { chop: 0, rangeNorm: 0, slopeNorm: 0, crossRate: 0, rawSlope: 0 }
   }
 
   // Calculate basic statistics
@@ -88,5 +90,5 @@ export function computeWindowFeatures(prices: number[]): WindowFeatures {
   }
   const crossRate = crossings / n
 
-  return { chop, rangeNorm, slopeNorm, crossRate }
+  return { chop, rangeNorm, slopeNorm, crossRate, rawSlope: slope }
 }

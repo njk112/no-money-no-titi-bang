@@ -46,6 +46,9 @@ export default class RegimeSegment extends BaseModel {
   @column()
   declare confidenceScore: number | null
 
+  @column()
+  declare slopeDirection: number
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
