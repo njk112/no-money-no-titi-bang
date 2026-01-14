@@ -1,16 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useGroups } from '@/hooks/use-groups'
+
+function truncateKeywords(keywords: string[], maxLength: number = 40): string {
+  if (!keywords || keywords.length === 0) return '-'
+  const joined = keywords.join(', ')
+  if (joined.length <= maxLength) return joined
+  return joined.substring(0, maxLength) + '...'
+}
 
 export default function GroupsSettingsPage() {
   const { groups, isLoading, error } = useGroups()
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/settings">
           <Button variant="ghost" size="sm">
@@ -20,7 +35,13 @@ export default function GroupsSettingsPage() {
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold">Item Groups</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Item Groups</h1>
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Group
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
@@ -37,32 +58,47 @@ export default function GroupsSettingsPage() {
           ) : groups.length === 0 ? (
             <p className="text-muted-foreground">No groups defined</p>
           ) : (
-            <div className="space-y-2">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  className="flex items-center justify-between py-3 border-b last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: group.color }}
-                    />
-                    <div>
-                      <div className="font-medium">{group.name}</div>
-                      {group.description && (
-                        <div className="text-sm text-muted-foreground">
-                          {group.description}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {group.item_count ?? 0} items
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Color</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead>Keywords</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {groups.map((group) => (
+                  <TableRow key={group.id}>
+                    <TableCell>
+                      <div
+                        className="w-6 h-6 rounded-full border"
+                        style={{ backgroundColor: group.color }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{group.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {group.description || '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {group.item_count ?? 0}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {truncateKeywords(group.keywords)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm">
+                          Edit
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

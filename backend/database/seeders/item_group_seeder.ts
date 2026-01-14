@@ -183,7 +183,7 @@ export default class extends BaseSeeder {
       },
     ]
 
-    const now = new Date()
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     const groupsWithTimestamps = groups.map((group) => ({
       ...group,
       created_at: now,

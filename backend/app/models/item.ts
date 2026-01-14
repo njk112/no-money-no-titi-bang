@@ -51,7 +51,7 @@ export default class Item extends BaseModel {
   @hasMany(() => RegimeSegment)
   declare regimeSegments: HasMany<typeof RegimeSegment>
 
-  @belongsTo(() => ItemGroup)
+  @belongsTo(() => ItemGroup, { foreignKey: 'groupId' })
   declare group: BelongsTo<typeof ItemGroup>
 
   @computed()
