@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,8 +15,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useItems } from '@/hooks/use-items'
 import { useGroups, Group } from '@/hooks/use-groups'
+import { api } from '@/lib/api'
 import type { Item } from '@/lib/types'
 
 function ItemIcon({ src, alt }: { src: string | null; alt: string }) {
@@ -63,8 +72,10 @@ function suggestGroup(itemName: string, groups: Group[]): Group | null {
 const UNKNOWN_PARAMS = { group: 'unknown' } as const
 
 export default function ReviewUnknownsPage() {
-  const { items, isLoading: itemsLoading, total } = useItems(UNKNOWN_PARAMS)
+  const { items, isLoading: itemsLoading, total, refetch } = useItems(UNKNOWN_PARAMS)
   const { groups, isLoading: groupsLoading } = useGroups()
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [isAssigning, setIsAssigning] = useState(false)
 
   const isLoading = itemsLoading || groupsLoading
 
@@ -76,6 +87,46 @@ export default function ReviewUnknownsPage() {
       suggestedGroup: suggestGroup(item.name, groups)
     }))
   }, [items, groups])
+
+  const allSelected = items.length > 0 && selectedIds.size === items.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < items.length
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(items.map(item => item.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (itemId: number, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(itemId)
+    } else {
+      newSelected.delete(itemId)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleAssignToGroup = async (groupId: string) => {
+    if (selectedIds.size === 0) return
+
+    setIsAssigning(true)
+    try {
+      const response = await api.patch<{ updated: number }>('/api/items/batch-group', {
+        itemIds: Array.from(selectedIds),
+        groupId: parseInt(groupId, 10),
+      })
+      toast.success(`Successfully assigned ${response.updated} items`)
+      setSelectedIds(new Set())
+      refetch()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to assign items')
+    } finally {
+      setIsAssigning(false)
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -92,11 +143,42 @@ export default function ReviewUnknownsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Unknown Items</CardTitle>
-          <CardDescription>
-            Items that have not been classified into a group. Review and assign them to appropriate groups.
-            {!isLoading && ` (${total} items)`}
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>Unknown Items</CardTitle>
+              <CardDescription>
+                Items that have not been classified into a group. Review and assign them to appropriate groups.
+                {!isLoading && ` (${total} items)`}
+              </CardDescription>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size} selected
+                </span>
+                <Select onValueChange={handleAssignToGroup} disabled={isAssigning}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Assign to Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups
+                      .filter(g => g.slug !== 'unknown')
+                      .map(group => (
+                        <SelectItem key={group.id} value={group.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full"
+                              style={{ backgroundColor: group.color }}
+                            />
+                            {group.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -111,7 +193,17 @@ export default function ReviewUnknownsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) {
+                          (el as HTMLButtonElement).dataset.state = someSelected ? 'indeterminate' : (allSelected ? 'checked' : 'unchecked')
+                        }
+                      }}
+                      onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                    />
+                  </TableHead>
                   <TableHead className="w-12">Icon</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="text-right">Price</TableHead>
@@ -122,7 +214,10 @@ export default function ReviewUnknownsPage() {
                 {itemsWithSuggestions.map(({ item, suggestedGroup }) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Checkbox />
+                      <Checkbox
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={(checked) => handleSelectItem(item.id, checked === true)}
+                      />
                     </TableCell>
                     <TableCell>
                       <ItemIcon src={item.icon_url} alt={item.name} />
