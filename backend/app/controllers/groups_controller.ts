@@ -3,6 +3,18 @@ import ItemGroup from '#models/item_group'
 import db from '@adonisjs/lucid/services/db'
 
 export default class GroupsController {
+  /**
+   * Generate a slug from a name (kebab-case)
+   */
+  private slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+  }
+
   async index({ response }: HttpContext) {
     // Get all groups with item counts
     const groups = await ItemGroup.query()
@@ -25,5 +37,53 @@ export default class GroupsController {
     }))
 
     return response.json(data)
+  }
+
+  async create({ request, response }: HttpContext) {
+    const { name, description, keywords, color } = request.body()
+
+    // Validate name is not empty
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return response.status(400).json({ error: 'Name is required' })
+    }
+
+    // Generate slug from name
+    const slug = this.slugify(name)
+    if (!slug) {
+      return response.status(400).json({ error: 'Could not generate valid slug from name' })
+    }
+
+    // Check if slug already exists
+    const existingGroup = await ItemGroup.findBy('slug', slug)
+    if (existingGroup) {
+      return response.status(400).json({ error: 'A group with this name already exists' })
+    }
+
+    // Get max sort_order and add 1
+    const maxSortOrder = await ItemGroup.query().max('sort_order as max_sort_order').first()
+    const nextSortOrder = (maxSortOrder?.$extras.max_sort_order || 0) + 1
+
+    // Create the group
+    const group = await ItemGroup.create({
+      name: name.trim(),
+      slug,
+      description: description || null,
+      keywords: keywords || [],
+      color: color || '#6B7280',
+      sortOrder: nextSortOrder,
+      isDefault: false,
+    })
+
+    return response.status(201).json({
+      id: group.id,
+      name: group.name,
+      slug: group.slug,
+      description: group.description,
+      keywords: group.keywords,
+      color: group.color,
+      sort_order: group.sortOrder,
+      is_default: group.isDefault,
+      item_count: 0,
+    })
   }
 }
