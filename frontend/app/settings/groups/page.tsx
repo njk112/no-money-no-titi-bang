@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -12,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useGroups } from '@/hooks/use-groups'
+import { useGroups, Group } from '@/hooks/use-groups'
+import { GroupModal } from '@/components/group-modal'
 
 function truncateKeywords(keywords: string[], maxLength: number = 40): string {
   if (!keywords || keywords.length === 0) return '-'
@@ -23,6 +25,8 @@ function truncateKeywords(keywords: string[], maxLength: number = 40): string {
 
 export default function GroupsSettingsPage() {
   const { groups, isLoading, error } = useGroups()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -37,11 +41,21 @@ export default function GroupsSettingsPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Item Groups</h1>
-        <Button>
+        <Button onClick={() => { setEditingGroup(null); setModalOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />
           Add Group
         </Button>
       </div>
+
+      <GroupModal
+        group={editingGroup}
+        open={modalOpen}
+        onSave={(data) => {
+          console.log('Save:', data)
+          setModalOpen(false)
+        }}
+        onClose={() => setModalOpen(false)}
+      />
 
       <Card>
         <CardHeader>
@@ -90,7 +104,7 @@ export default function GroupsSettingsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingGroup(group); setModalOpen(true); }}>
                           Edit
                         </Button>
                       </div>
