@@ -1,0 +1,54 @@
+{
+  "project": "OSRS GE Dashboard",
+  "branchName": "ralph/frictionless-blocking",
+  "description": "Frictionless Blocking from Dashboard - Enable single-click blocking from table rows and modal without confirmation dialogs",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add block button to dashboard table rows",
+      "description": "As a user, I want to block items directly from the dashboard table so that I don't have to open the modal for every item I want to hide.",
+      "acceptanceCriteria": [
+        "Block button (ban icon) appears on each row in ItemsTable component",
+        "Button is styled consistently with existing favorite toggle button (variant='ghost', size='icon')",
+        "Button is visible without hovering (always shown)",
+        "Clicking the button calls toggleBlocked(item.id) immediately (no confirmation)",
+        "Item row disappears immediately after blocking",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Remove confirmation dialog from modal blocking",
+      "description": "As a user, I want to block items from the modal with a single click so that the process is fast and frictionless.",
+      "acceptanceCriteria": [
+        "Ban icon in ItemDetailModal blocks immediately on click",
+        "Remove showBlockConfirm state from ItemDetailModal",
+        "Remove inline confirmation UI (the div with 'Block this item?' text and Confirm/Cancel buttons)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Close modal after blocking",
+      "description": "As a user, I want the modal to close automatically after I block an item so that I can continue browsing the dashboard.",
+      "acceptanceCriteria": [
+        "Modal closes immediately after block button is clicked",
+        "Ban icon onClick handler calls toggleBlocked(item.id) then onClose()",
+        "No visual glitches or flash before modal closes",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
