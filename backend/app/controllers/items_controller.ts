@@ -29,6 +29,7 @@ export default class ItemsController {
         'items.members',
         'items.high_alch',
         'items.low_alch',
+        'items.group_id',
         'items.created_at',
         'items.updated_at'
       )
@@ -39,6 +40,7 @@ export default class ItemsController {
       .select('item_prices.synced_at')
       .select('item_prices.volume')
       .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
+      .preload('group')
 
     // Search filter (US-013)
     if (search) {
@@ -185,6 +187,9 @@ export default class ItemsController {
         profit_margin: profitMargin,
         max_profit: maxProfit,
         volume: item.$extras.volume ?? null,
+        group: item.group
+          ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+          : null,
       }
     })
 
@@ -246,7 +251,7 @@ export default class ItemsController {
 
   async show({ params, response }: HttpContext) {
     // Fetch item without join to avoid id collision
-    const item = await Item.find(params.id)
+    const item = await Item.query().where('id', params.id).preload('group').first()
 
     if (!item) {
       return response.notFound({ message: 'Item not found' })
@@ -320,6 +325,9 @@ export default class ItemsController {
       selling_low: sellingLow,
       ge_tracker_url: item.geTrackerUrl,
       volume: latestPrice?.volume ?? null,
+      group: item.group
+        ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+        : null,
     })
   }
 }

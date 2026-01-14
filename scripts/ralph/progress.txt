@@ -20,3 +20,83 @@
 
 ---
 
+## 2026-01-14 - US-001
+- What was implemented: Created migration for item_groups database table with all required columns (id, name, slug, description, keywords, color, sort_order, is_default, created_at, updated_at)
+- Files changed: `backend/database/migrations/1768413650048_create_item_groups_table.ts`
+- **Learnings:**
+  - JSON data in SQLite stored as `text` type
+  - Use `table.increments('id').primary()` for auto-increment primary keys
+  - Pre-existing typecheck errors in codebase don't block new work as long as new code is clean
+---
+
+## 2026-01-14 - US-002
+- What was implemented: Created ItemGroup Lucid model with all columns and appropriate decorators
+- Files changed: `backend/app/models/item_group.ts`
+- **Learnings:**
+  - For JSON columns stored as text in SQLite, use `@column({ prepare: (value) => JSON.stringify(value), consume: (value) => JSON.parse(value) })` to automatically handle serialization/deserialization
+  - AdonisJS Lucid automatically converts snake_case database columns to camelCase model properties (e.g., `sort_order` → `sortOrder`)
+---
+
+## 2026-01-14 - US-003
+- What was implemented: Created migration to add group_id (foreign key to item_groups) and classified_at (timestamp) columns to items table
+- Files changed: `backend/database/migrations/1768413845000_add_group_id_to_items_table.ts`
+- **Learnings:**
+  - Foreign key with SET NULL on delete: chain `.references('id').inTable('table_name').onDelete('SET NULL')`
+  - Use `.unsigned()` for foreign key columns referencing auto-increment primary keys
+  - SQLite with better-sqlite3 can lock when dev server is running - migrations may need server restart to complete on large tables
+---
+
+## 2026-01-14 - US-004
+- What was implemented: Created seeder for 12 default item groups with all required data (name, slug, description, keywords, color, sort_order, is_default)
+- Files changed: `backend/database/seeders/item_group_seeder.ts`
+- **Learnings:**
+  - Seeders use `db.table('table_name').multiInsert([...])` for bulk inserts
+  - Make seeders idempotent by checking for existing records before inserting
+  - Keywords stored as JSON string using `JSON.stringify([...])`
+---
+
+## 2026-01-14 - US-005
+- What was implemented: Added ORM relationships between Item and ItemGroup models (belongsTo/hasMany), plus groupId and classifiedAt columns to Item model
+- Files changed: `backend/app/models/item.ts`, `backend/app/models/item_group.ts`
+- **Learnings:**
+  - Import `belongsTo` from `@adonisjs/lucid/orm` and `BelongsTo` type from `@adonisjs/lucid/types/relations`
+  - Circular imports between models work fine in AdonisJS Lucid (Item → ItemGroup → Item)
+  - Use `@column.dateTime()` without autoCreate for nullable datetime fields like classifiedAt
+---
+
+## 2026-01-14 - US-006
+- What was implemented: Created GroupsController with GET /api/groups endpoint that returns all groups with item counts
+- Files changed: `backend/app/controllers/groups_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `db.raw()` with subquery for computed columns: `db.raw('(SELECT COUNT(*) FROM items WHERE items.group_id = item_groups.id) as item_count')`
+  - Controllers use lazy import pattern: `const GroupsController = () => import('#controllers/groups_controller')`
+  - Access computed columns via `group.$extras.item_count`
+---
+
+## 2026-01-14 - US-007
+- What was implemented: Added group include filter to items API (accepts comma-separated slugs)
+- Files changed: `backend/app/controllers/items_controller.ts`
+- **Learnings:**
+  - Parse comma-separated params: `group.split(',').map((s: string) => s.trim()).filter(Boolean)`
+  - Use `.leftJoin()` + `.whereIn()` to filter by related table column
+---
+
+## 2026-01-14 - US-008
+- What was implemented: Added group exclude filter to items API (accepts comma-separated slugs via exclude_group param)
+- Files changed: `backend/app/controllers/items_controller.ts`
+- **Learnings:**
+  - Use `.whereNotIn()` to exclude items matching criteria
+  - Include null group_id items in exclude filter using `.whereNull().orWhereNotIn()` inside a subquery
+  - Mutually exclusive filters: use if/else if to ensure exclude takes precedence
+---
+
+## 2026-01-14 - US-009
+- What was implemented: Updated items API to include group data in responses for both index and show endpoints
+- Files changed: `backend/app/controllers/items_controller.ts`
+- **Learnings:**
+  - Use `.preload('group')` to eager load relationships in AdonisJS Lucid queries
+  - For show endpoint, use `Item.query().where('id', params.id).preload('group').first()` instead of `Item.find()` to enable preloading
+  - Include group_id in select statement when preloading relationships for proper association
+  - Return null for missing relationships rather than omitting the field for consistent API responses
+---
+
