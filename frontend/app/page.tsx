@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Star } from 'lucide-react'
+import { Star, ChevronDown, X } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { FilterPanel } from '@/components/filter-panel'
+import { GroupStatistics } from '@/components/group-statistics'
 import { ItemsTable } from '@/components/items-table'
 import { TableSkeleton } from '@/components/table-skeleton'
 import { ErrorState } from '@/components/error-state'
@@ -21,7 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useItems } from '@/hooks/use-items'
+import { useGroups } from '@/hooks/use-groups'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useSettings } from '@/contexts/settings-context'
 import type { ItemsParams } from '@/lib/types'
@@ -35,8 +39,11 @@ export default function Dashboard() {
   const [minVolume, setMinVolume] = useState<string>('')
   const [maxVolume, setMaxVolume] = useState<string>('')
   const [regime, setRegime] = useState<'all' | 'RANGE_BOUND' | 'TRENDING'>('all')
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+  const [groupFilterMode, setGroupFilterMode] = useState<'include' | 'exclude'>('include')
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
 
+  const { groups } = useGroups()
   const { favorites, blockedItems, showFavoritesOnly, setShowFavoritesOnly, defaultFilters } = useSettings()
   const debouncedSearch = useDebounce(search, 300)
 
@@ -53,18 +60,23 @@ export default function Dashboard() {
     }
   }, [defaultFilters, filtersInitialized])
 
-  const params: ItemsParams = useMemo(() => ({
-    page,
-    search: debouncedSearch || undefined,
-    min_price: minPrice ? Number(minPrice) : undefined,
-    max_price: maxPrice ? Number(maxPrice) : undefined,
-    min_margin: minMargin ? Number(minMargin) : undefined,
-    min_volume: minVolume ? Number(minVolume) : undefined,
-    max_volume: maxVolume ? Number(maxVolume) : undefined,
-    regime: regime !== 'all' ? regime : undefined,
-    sort: 'profit',
-    order: 'desc',
-  }), [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume, regime])
+  const params: ItemsParams = useMemo(() => {
+    const groupParam = selectedGroups.length > 0 ? selectedGroups.join(',') : undefined
+    return {
+      page,
+      search: debouncedSearch || undefined,
+      min_price: minPrice ? Number(minPrice) : undefined,
+      max_price: maxPrice ? Number(maxPrice) : undefined,
+      min_margin: minMargin ? Number(minMargin) : undefined,
+      min_volume: minVolume ? Number(minVolume) : undefined,
+      max_volume: maxVolume ? Number(maxVolume) : undefined,
+      regime: regime !== 'all' ? regime : undefined,
+      group: groupFilterMode === 'include' ? groupParam : undefined,
+      exclude_group: groupFilterMode === 'exclude' ? groupParam : undefined,
+      sort: 'profit',
+      order: 'desc',
+    }
+  }, [page, debouncedSearch, minPrice, maxPrice, minMargin, minVolume, maxVolume, regime, selectedGroups, groupFilterMode])
 
   const { items, totalPages, isLoading, error, refetch } = useItems(params, { pollInterval: 60000 })
 
@@ -97,6 +109,23 @@ export default function Dashboard() {
     setMinVolume(defaultFilters.minVolume)
     setMaxVolume(defaultFilters.maxVolume)
     setRegime('all')
+    setSelectedGroups([])
+    setGroupFilterMode('include')
+    setPage(1)
+  }
+
+  const handleGroupToggle = (slug: string) => {
+    setSelectedGroups(prev =>
+      prev.includes(slug)
+        ? prev.filter(s => s !== slug)
+        : [...prev, slug]
+    )
+    setPage(1)
+  }
+
+  const handleGroupStatsClick = (slug: string) => {
+    setSelectedGroups([slug])
+    setGroupFilterMode('include')
     setPage(1)
   }
 
@@ -109,7 +138,8 @@ export default function Dashboard() {
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filters sidebar */}
-        <aside className="w-full lg:w-64 shrink-0">
+        <aside className="w-full lg:w-64 shrink-0 space-y-4">
+          <GroupStatistics onGroupClick={handleGroupStatsClick} pollInterval={60000} />
           <FilterPanel onResetFilters={handleResetFilters}>
             <div className="space-y-4">
               <div>
@@ -195,6 +225,87 @@ export default function Dashboard() {
                     <SelectItem value="TRENDING">Trending</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Groups</Label>
+                <div className="flex items-center gap-2 mt-1 mb-2">
+                  <Button
+                    variant={groupFilterMode === 'include' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => {
+                      setGroupFilterMode('include')
+                      setPage(1)
+                    }}
+                  >
+                    Include
+                  </Button>
+                  <Button
+                    variant={groupFilterMode === 'exclude' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => {
+                      setGroupFilterMode('exclude')
+                      setPage(1)
+                    }}
+                  >
+                    Exclude
+                  </Button>
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="truncate">
+                        {selectedGroups.length > 0
+                          ? `${selectedGroups.length} selected`
+                          : 'Select groups...'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0" align="start">
+                    <div className="max-h-60 overflow-y-auto p-2">
+                      {groups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                          onClick={() => handleGroupToggle(group.slug)}
+                        >
+                          <Checkbox
+                            checked={selectedGroups.includes(group.slug)}
+                            onCheckedChange={() => handleGroupToggle(group.slug)}
+                          />
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: group.color }}
+                          />
+                          <span className="text-sm truncate">{group.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {selectedGroups.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedGroups.map((slug) => {
+                      const group = groups.find(g => g.slug === slug)
+                      if (!group) return null
+                      return (
+                        <span
+                          key={slug}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
+                          style={{ backgroundColor: group.color, color: '#fff' }}
+                        >
+                          {group.name}
+                          <X
+                            className="h-3 w-3 cursor-pointer hover:opacity-70"
+                            onClick={() => handleGroupToggle(slug)}
+                          />
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
               <div className="pt-2">
                 <RegimeSettingsModal />

@@ -66,6 +66,7 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
           <TableHead className="w-10"></TableHead>
           <TableHead className="w-12">Icon</TableHead>
           <TableHead>Name</TableHead>
+          <TableHead>Group</TableHead>
           <TableHead className="text-right">Buy Price</TableHead>
           <TableHead className="text-right">Sell Price</TableHead>
           <TableHead className="text-right">Margin</TableHead>
@@ -111,6 +112,18 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
                   <span className="text-xs text-yellow-600 font-medium">P2P</span>
                 )}
               </span>
+            </TableCell>
+            <TableCell>
+              {item.group ? (
+                <span
+                  className="inline-block px-2 py-0.5 text-xs rounded-full text-white"
+                  style={{ backgroundColor: item.group.color }}
+                >
+                  {item.group.name}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
             </TableCell>
             <TableCell className="text-right">
               {formatNumber(item.low_price)}

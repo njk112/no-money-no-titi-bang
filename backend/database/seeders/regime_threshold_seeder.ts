@@ -9,14 +9,15 @@ export default class extends BaseSeeder {
       return
     }
 
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
     await db.table('regime_thresholds').insert({
       chop_max: 0.25,
       range_norm_max: 0.02,
       slope_norm_max: 0.0005,
       cross_rate_min: 0.08,
       window_size: 24,
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: now,
+      updated_at: now,
     })
   }
 }

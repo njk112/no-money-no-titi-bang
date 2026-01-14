@@ -1,0 +1,195 @@
+import { BaseSeeder } from '@adonisjs/lucid/seeders'
+import db from '@adonisjs/lucid/services/db'
+
+export default class extends BaseSeeder {
+  async run() {
+    // Check if groups already exist to make seeder idempotent
+    const existing = await db.from('item_groups').first()
+    if (existing) {
+      return
+    }
+
+    const groups = [
+      {
+        name: 'Armor',
+        slug: 'armor',
+        description: 'Defensive equipment including helms, bodies, legs, and shields',
+        keywords: JSON.stringify([
+          'helm',
+          'platebody',
+          'chainbody',
+          'platelegs',
+          'boots',
+          'gloves',
+          'shield',
+          'coif',
+          "d'hide",
+          'chaps',
+        ]),
+        color: '#3B82F6',
+        sort_order: 1,
+        is_default: true,
+      },
+      {
+        name: 'Weapons',
+        slug: 'weapons',
+        description: 'Offensive equipment including swords, bows, and staves',
+        keywords: JSON.stringify([
+          'sword',
+          'scimitar',
+          'dagger',
+          'mace',
+          'bow',
+          'crossbow',
+          'staff',
+          'wand',
+          'battleaxe',
+          'longsword',
+        ]),
+        color: '#EF4444',
+        sort_order: 2,
+        is_default: true,
+      },
+      {
+        name: 'Ammunition',
+        slug: 'ammunition',
+        description: 'Projectiles for ranged weapons',
+        keywords: JSON.stringify(['arrow', 'bolt', 'dart', 'javelin', 'knife', 'thrownaxe']),
+        color: '#F59E0B',
+        sort_order: 3,
+        is_default: true,
+      },
+      {
+        name: 'Potions',
+        slug: 'potions',
+        description: 'Consumable drinks that provide temporary effects',
+        keywords: JSON.stringify(['potion', '(1)', '(2)', '(3)', '(4)', 'brew', 'mix']),
+        color: '#8B5CF6',
+        sort_order: 4,
+        is_default: true,
+      },
+      {
+        name: 'Food',
+        slug: 'food',
+        description: 'Consumable items that restore health',
+        keywords: JSON.stringify([
+          'shark',
+          'lobster',
+          'monkfish',
+          'karambwan',
+          'pie',
+          'cake',
+          'bass',
+          'swordfish',
+          'tuna',
+        ]),
+        color: '#10B981',
+        sort_order: 5,
+        is_default: true,
+      },
+      {
+        name: 'Herbs',
+        slug: 'herbs',
+        description: 'Plants used in herblore',
+        keywords: JSON.stringify([
+          'grimy',
+          'guam',
+          'marrentill',
+          'tarromin',
+          'harralander',
+          'ranarr',
+          'irit',
+          'avantoe',
+          'kwuarm',
+          'snapdragon',
+          'cadantine',
+          'lantadyme',
+          'dwarf weed',
+          'torstol',
+        ]),
+        color: '#22C55E',
+        sort_order: 6,
+        is_default: true,
+      },
+      {
+        name: 'Runes',
+        slug: 'runes',
+        description: 'Magical stones used for casting spells',
+        keywords: JSON.stringify([
+          'fire rune',
+          'water rune',
+          'air rune',
+          'earth rune',
+          'mind rune',
+          'body rune',
+          'death rune',
+          'blood rune',
+          'soul rune',
+          'nature rune',
+          'law rune',
+          'cosmic rune',
+          'chaos rune',
+          'astral rune',
+          'wrath rune',
+        ]),
+        color: '#6366F1',
+        sort_order: 7,
+        is_default: true,
+      },
+      {
+        name: 'Skilling Materials',
+        slug: 'skilling-materials',
+        description: 'Raw materials used in various skills',
+        keywords: JSON.stringify(['ore', 'bar', 'log', 'leather', 'gem', 'uncut', 'plank']),
+        color: '#78716C',
+        sort_order: 8,
+        is_default: true,
+      },
+      {
+        name: 'Jewellery',
+        slug: 'jewellery',
+        description: 'Enchanted accessories with various effects',
+        keywords: JSON.stringify(['ring of', 'amulet of', 'necklace of', 'bracelet of']),
+        color: '#EC4899',
+        sort_order: 9,
+        is_default: true,
+      },
+      {
+        name: 'Seeds',
+        slug: 'seeds',
+        description: 'Plantable items for farming',
+        keywords: JSON.stringify(['seed']),
+        color: '#84CC16',
+        sort_order: 10,
+        is_default: true,
+      },
+      {
+        name: 'Resources',
+        slug: 'resources',
+        description: 'Raw materials from monsters and gathering',
+        keywords: JSON.stringify(['raw', 'bones', 'hide', 'scale', 'essence', 'feather']),
+        color: '#A78BFA',
+        sort_order: 11,
+        is_default: true,
+      },
+      {
+        name: 'Unknown',
+        slug: 'unknown',
+        description: 'Items that have not been classified into a group',
+        keywords: JSON.stringify([]),
+        color: '#6B7280',
+        sort_order: 12,
+        is_default: true,
+      },
+    ]
+
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const groupsWithTimestamps = groups.map((group) => ({
+      ...group,
+      created_at: now,
+      updated_at: now,
+    }))
+
+    await db.table('item_groups').multiInsert(groupsWithTimestamps)
+  }
+}

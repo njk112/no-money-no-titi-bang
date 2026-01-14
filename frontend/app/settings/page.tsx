@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -210,6 +212,32 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold">Settings</h1>
+
+      {/* Item Groups Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Item Groups</CardTitle>
+          <CardDescription>
+            Manage item categories for filtering and organization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Link
+            href="/settings/groups"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+          >
+            <span>Manage Groups</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
+          <Link
+            href="/review-unknowns"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+          >
+            <span>Review Unknown Items</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Default Filter Values Section */}
       <Card>

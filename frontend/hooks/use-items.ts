@@ -40,6 +40,8 @@ export function useItems(params: ItemsParams, options?: UseItemsOptions): UseIte
     if (p.regime) searchParams.set('regime', p.regime)
     if (p.sort) searchParams.set('sort', p.sort)
     if (p.order) searchParams.set('order', p.order)
+    if (p.group) searchParams.set('group', p.group)
+    if (p.exclude_group) searchParams.set('exclude_group', p.exclude_group)
     const qs = searchParams.toString()
     return qs ? `?${qs}` : ''
   }, [])

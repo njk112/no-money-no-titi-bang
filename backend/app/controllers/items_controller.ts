@@ -1,5 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import Item from '#models/item'
+import ItemGroup from '#models/item_group'
 
 export default class ItemsController {
   async index({ request, response }: HttpContext) {
@@ -15,6 +17,8 @@ export default class ItemsController {
     const maxVolume = request.input('max_volume')
     const members = request.input('members')
     const regime = request.input('regime')
+    const group = request.input('group')
+    const excludeGroup = request.input('exclude_group')
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
@@ -27,6 +31,7 @@ export default class ItemsController {
         'items.members',
         'items.high_alch',
         'items.low_alch',
+        'items.group_id',
         'items.created_at',
         'items.updated_at'
       )
@@ -37,6 +42,7 @@ export default class ItemsController {
       .select('item_prices.synced_at')
       .select('item_prices.volume')
       .leftJoin('item_prices', 'items.latest_price_id', 'item_prices.id')
+      .preload('group')
 
     // Search filter (US-013)
     if (search) {
@@ -89,6 +95,28 @@ export default class ItemsController {
     // Regime filter (US-024)
     if (regime === 'RANGE_BOUND' || regime === 'TRENDING') {
       query.where('items.current_regime', regime)
+    }
+
+    // Group exclude filter (US-008) - takes precedence over include
+    if (excludeGroup) {
+      const excludeSlugs = excludeGroup.split(',').map((s: string) => s.trim()).filter(Boolean)
+      if (excludeSlugs.length > 0) {
+        query
+          .leftJoin('item_groups', 'items.group_id', 'item_groups.id')
+          .where((subQuery) => {
+            subQuery
+              .whereNull('items.group_id')
+              .orWhereNotIn('item_groups.slug', excludeSlugs)
+          })
+      }
+    } else if (group) {
+      // Group include filter (US-007)
+      const groupSlugs = group.split(',').map((s: string) => s.trim()).filter(Boolean)
+      if (groupSlugs.length > 0) {
+        query
+          .leftJoin('item_groups', 'items.group_id', 'item_groups.id')
+          .whereIn('item_groups.slug', groupSlugs)
+      }
     }
 
     // Clone query for count (before pagination)
@@ -161,6 +189,9 @@ export default class ItemsController {
         profit_margin: profitMargin,
         max_profit: maxProfit,
         volume: item.$extras.volume ?? null,
+        group: item.group
+          ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+          : null,
       }
     })
 
@@ -222,7 +253,7 @@ export default class ItemsController {
 
   async show({ params, response }: HttpContext) {
     // Fetch item without join to avoid id collision
-    const item = await Item.find(params.id)
+    const item = await Item.query().where('id', params.id).preload('group').first()
 
     if (!item) {
       return response.notFound({ message: 'Item not found' })
@@ -296,6 +327,86 @@ export default class ItemsController {
       selling_low: sellingLow,
       ge_tracker_url: item.geTrackerUrl,
       volume: latestPrice?.volume ?? null,
+      group: item.group
+        ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+        : null,
     })
+  }
+
+  async updateGroup({ params, request, response }: HttpContext) {
+    const item = await Item.find(params.id)
+
+    if (!item) {
+      return response.notFound({ message: 'Item not found' })
+    }
+
+    const { groupId } = request.body()
+
+    // Validate groupId if not null
+    if (groupId !== null) {
+      if (typeof groupId !== 'number' || !Number.isInteger(groupId)) {
+        return response.badRequest({ message: 'groupId must be an integer or null' })
+      }
+
+      const group = await ItemGroup.find(groupId)
+      if (!group) {
+        return response.badRequest({ message: 'Invalid groupId: group does not exist' })
+      }
+    }
+
+    // Update item's group and classified_at timestamp
+    item.groupId = groupId
+    item.classifiedAt = DateTime.now()
+    await item.save()
+
+    // Reload item with group relationship
+    await item.load('group')
+
+    return response.json({
+      id: item.id,
+      name: item.name,
+      icon_url: item.iconUrl,
+      buy_limit: item.buyLimit,
+      members: item.members,
+      group: item.group
+        ? { id: item.group.id, name: item.group.name, slug: item.group.slug, color: item.group.color }
+        : null,
+    })
+  }
+
+  async batchUpdateGroup({ request, response }: HttpContext) {
+    const { itemIds, groupId } = request.body()
+
+    // Validate itemIds is non-empty array
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return response.badRequest({ message: 'itemIds must be a non-empty array' })
+    }
+
+    // Validate all itemIds are integers
+    if (!itemIds.every((id: unknown) => typeof id === 'number' && Number.isInteger(id))) {
+      return response.badRequest({ message: 'All itemIds must be integers' })
+    }
+
+    // Validate groupId is an integer
+    if (typeof groupId !== 'number' || !Number.isInteger(groupId)) {
+      return response.badRequest({ message: 'groupId must be an integer' })
+    }
+
+    // Validate groupId exists
+    const group = await ItemGroup.find(groupId)
+    if (!group) {
+      return response.badRequest({ message: 'Invalid groupId: group does not exist' })
+    }
+
+    // Update all items with the specified group
+    const now = DateTime.now().toSQL()
+    const updated = await Item.query()
+      .whereIn('id', itemIds)
+      .update({
+        group_id: groupId,
+        classified_at: now,
+      })
+
+    return response.json({ updated })
   }
 }
