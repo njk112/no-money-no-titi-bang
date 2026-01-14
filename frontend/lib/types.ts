@@ -1,3 +1,22 @@
+export interface Group {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  keywords: string[]
+  color: string
+  sort_order: number
+  is_default: boolean
+  item_count: number
+}
+
+export interface ItemGroup {
+  id: number
+  name: string
+  slug: string
+  color: string
+}
+
 export interface Item {
   id: number
   name: string
@@ -21,6 +40,7 @@ export interface Item {
   selling_low?: number | null
   ge_tracker_url?: string
   volume?: number | null
+  group?: ItemGroup | null
 }
 
 export interface ItemsParams {
@@ -37,6 +57,8 @@ export interface ItemsParams {
   regime?: 'RANGE_BOUND' | 'TRENDING'
   sort?: 'profit' | 'margin' | 'price' | 'name' | 'buy_limit'
   order?: 'asc' | 'desc'
+  group?: string
+  exclude_group?: string
 }
 
 export interface ItemsResponse {
