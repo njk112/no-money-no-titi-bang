@@ -12,7 +12,7 @@ export default class extends BaseSchema {
       table.text('keywords').notNullable() // JSON stored as text
       table.string('color').notNullable()
       table.integer('sort_order').notNullable()
-      table.boolean('is_default').defaultTo(true)
+      table.boolean('is_default').defaultTo(false)
 
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').nullable()

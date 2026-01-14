@@ -11,7 +11,7 @@ export default class CorsMiddleware {
       ctx.response.header('Access-Control-Allow-Origin', origin)
     }
 
-    ctx.response.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    ctx.response.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
     ctx.response.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
     ctx.response.header('Access-Control-Allow-Credentials', 'true')
 
