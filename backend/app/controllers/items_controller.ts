@@ -15,6 +15,7 @@ export default class ItemsController {
     const maxVolume = request.input('max_volume')
     const members = request.input('members')
     const regime = request.input('regime')
+    const group = request.input('group')
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
@@ -89,6 +90,16 @@ export default class ItemsController {
     // Regime filter (US-024)
     if (regime === 'RANGE_BOUND' || regime === 'TRENDING') {
       query.where('items.current_regime', regime)
+    }
+
+    // Group filter (US-007)
+    if (group) {
+      const groupSlugs = group.split(',').map((s: string) => s.trim()).filter(Boolean)
+      if (groupSlugs.length > 0) {
+        query
+          .leftJoin('item_groups', 'items.group_id', 'item_groups.id')
+          .whereIn('item_groups.slug', groupSlugs)
+      }
     }
 
     // Clone query for count (before pagination)
