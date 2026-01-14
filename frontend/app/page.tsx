@@ -364,6 +364,7 @@ export default function Dashboard() {
         itemId={selectedItemId}
         isOpen={selectedItemId !== null}
         onClose={handleCloseModal}
+        onGroupChange={refetch}
       />
     </div>
   )

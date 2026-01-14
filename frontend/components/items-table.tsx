@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { Star, Ban } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ function getMarginColor(margin: number | null): string {
 }
 
 export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
-  const { favorites, toggleFavorite } = useSettings()
+  const { favorites, toggleFavorite, toggleBlocked } = useSettings()
 
   if (items.length === 0) {
     return (
@@ -63,6 +63,7 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10"></TableHead>
           <TableHead className="w-10"></TableHead>
           <TableHead className="w-12">Icon</TableHead>
           <TableHead>Name</TableHead>
@@ -100,6 +101,17 @@ export function ItemsTable({ items, onItemClick }: ItemsTableProps) {
                       : 'text-muted-foreground hover:text-yellow-500'
                   )}
                 />
+              </button>
+            </TableCell>
+            <TableCell>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleBlocked(item.id)
+                }}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <Ban className="w-4 h-4 text-muted-foreground hover:text-red-500 transition-colors" />
               </button>
             </TableCell>
             <TableCell>

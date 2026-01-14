@@ -27,6 +27,7 @@ interface ItemDetailModalProps {
   itemId: number | null
   isOpen: boolean
   onClose: () => void
+  onGroupChange?: () => void
 }
 
 function formatNumber(num: number | null): string {
@@ -49,12 +50,11 @@ function formatRelativeTime(isoString: string | null): string {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
 }
 
-export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
+export function ItemDetailModal({ itemId, isOpen, onClose, onGroupChange }: ItemDetailModalProps) {
   const { item, isLoading, error, refetch } = useItem(isOpen ? itemId : null)
   const { groups } = useGroups()
   const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
   const { favorites, toggleFavorite, toggleBlocked } = useSettings()
-  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json')
   const [isExporting, setIsExporting] = useState(false)
   const [isSavingGroup, setIsSavingGroup] = useState(false)
@@ -71,6 +71,7 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
       })
       toast.success('Group updated successfully')
       refetch()
+      onGroupChange?.()
     } catch (err) {
       toast.error('Failed to update group')
       console.error('Failed to update group:', err)
@@ -187,35 +188,16 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                   />
                 </button>
                 <button
-                  onClick={() => setShowBlockConfirm(true)}
+                  onClick={() => {
+                    toggleBlocked(item.id)
+                    onClose()
+                  }}
                   className="p-1 hover:bg-muted rounded"
                   title="Block item"
                 >
                   <Ban className="w-5 h-5 text-muted-foreground hover:text-red-500 transition-colors" />
                 </button>
               </div>
-              {showBlockConfirm && (
-                <div className="flex items-center gap-2 mt-2 text-sm">
-                  <span className="text-muted-foreground">Block this item?</span>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      toggleBlocked(item.id)
-                      setShowBlockConfirm(false)
-                    }}
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowBlockConfirm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
