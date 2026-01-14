@@ -1,0 +1,60 @@
+# Ralph Progress Log
+
+## Codebase Patterns
+- Migrations: Located in `backend/database/migrations/` with timestamp prefix (13 digits ms)
+- Migrations: Use `table.increments('id')` for primary key
+- Migrations: Foreign keys chain `.references('id').inTable('table').onDelete('CASCADE')` or `.onDelete('SET NULL')`
+- Migrations: Indexes via `table.index(['column'])` or `table.index(['col1', 'col2'])`
+- Models: Located in `backend/app/models/` using AdonisJS Lucid ORM
+- Models: Use `@column()` for primitives, `@column.dateTime()` for timestamps
+- Models: Relationships via `@hasMany()` and `@belongsTo()` decorators
+- Seeders: Located in `backend/database/seeders/`
+- Seeders: Create with `node ace make:seeder <name>`, run with `node ace db:seed --files="./database/seeders/<name>.ts"`
+- Commands: Located in `backend/commands/`
+- Commands: Create with `node ace make:command <name>`, run with `node ace <command:name>`
+- Frontend hooks: Located in `frontend/hooks/`, use 'use client' directive
+- Frontend types: Located in `frontend/lib/types.ts`
+- Frontend components: Located in `frontend/components/`
+- API: Import `api` from '@/lib/api', use `api.get<T>()` with type parameter
+- Typecheck backend: `cd backend && npx tsc --noEmit`
+- Typecheck frontend: `cd frontend && npx tsc --noEmit`
+- UI: shadcn/ui components with Radix primitives, icons from lucide-react
+- Tables: ItemsTable at `frontend/components/items-table.tsx`
+- Modals: ItemDetailModal at `frontend/components/item-detail-modal.tsx`
+- Blocking: toggleBlocked function from useSettings context (not useItems)
+- Icons: Import from lucide-react (Star, Ban, etc.)
+- Table buttons: Use e.stopPropagation() to prevent row click when clicking buttons
+
+---
+
+## 2026-01-14 - US-001
+- What was implemented: Added block button (Ban icon) to dashboard table rows for frictionless blocking
+- Files changed:
+  - `frontend/components/items-table.tsx` - Added Ban icon import, toggleBlocked from useSettings, new column header, and block button cell
+- **Learnings:**
+  - toggleBlocked is from useSettings context, not useItems hook (corrected pattern above)
+  - Button styling follows existing favorite button pattern: className="p-1 hover:bg-muted rounded"
+  - Always use e.stopPropagation() on table cell buttons to prevent row click event
+  - Block button uses red hover color (hover:text-red-500) vs yellow for favorites (hover:text-yellow-500)
+---
+
+## 2026-01-14 - US-002
+- What was implemented: Removed confirmation dialog from modal blocking for frictionless UX
+- Files changed:
+  - `frontend/components/item-detail-modal.tsx` - Removed showBlockConfirm state, removed confirmation UI, made Ban icon call toggleBlocked directly
+- **Learnings:**
+  - When removing state, also remove any unused imports (Button was still used elsewhere, so kept)
+  - Simple state removal: delete useState line and all references to the state setter and value
+  - Modal stays open after blocking (US-003 will handle auto-close)
+---
+
+## 2026-01-14 - US-003
+- What was implemented: Auto-close modal after blocking item
+- Files changed:
+  - `frontend/components/item-detail-modal.tsx` - Modified Ban icon onClick to call toggleBlocked then onClose
+- **Learnings:**
+  - Chain multiple actions in onClick by using arrow function with block: `onClick={() => { action1(); action2(); }}`
+  - onClose prop is available in modal components for programmatic close
+  - Order matters: block first, then close (ensures state updates before UI changes)
+---
+
