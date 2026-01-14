@@ -16,6 +16,7 @@ export default class ItemsController {
     const members = request.input('members')
     const regime = request.input('regime')
     const group = request.input('group')
+    const excludeGroup = request.input('exclude_group')
     const sort = request.input('sort', 'profit')
     const order = request.input('order', 'desc')
 
@@ -92,8 +93,20 @@ export default class ItemsController {
       query.where('items.current_regime', regime)
     }
 
-    // Group filter (US-007)
-    if (group) {
+    // Group exclude filter (US-008) - takes precedence over include
+    if (excludeGroup) {
+      const excludeSlugs = excludeGroup.split(',').map((s: string) => s.trim()).filter(Boolean)
+      if (excludeSlugs.length > 0) {
+        query
+          .leftJoin('item_groups', 'items.group_id', 'item_groups.id')
+          .where((subQuery) => {
+            subQuery
+              .whereNull('items.group_id')
+              .orWhereNotIn('item_groups.slug', excludeSlugs)
+          })
+      }
+    } else if (group) {
+      // Group include filter (US-007)
       const groupSlugs = group.split(',').map((s: string) => s.trim()).filter(Boolean)
       if (groupSlugs.length > 0) {
         query
