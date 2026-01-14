@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/error-state'
 import { PaginationControls } from '@/components/pagination-controls'
 import { ItemDetailModal } from '@/components/item-detail-modal'
 import { LastRefreshed } from '@/components/last-refreshed'
+import { RegimeSettingsModal } from '@/components/regime-settings-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -194,6 +195,9 @@ export default function Dashboard() {
                     <SelectItem value="TRENDING">Trending</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="pt-2">
+                <RegimeSettingsModal />
               </div>
             </div>
           </FilterPanel>
