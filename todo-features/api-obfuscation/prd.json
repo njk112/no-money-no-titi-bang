@@ -1,0 +1,225 @@
+{
+  "project": "OSRS GE Dashboard",
+  "branchName": "ralph/api-obfuscation",
+  "description": "Next.js API Routes for Backend Obfuscation - Migrate all frontend API calls to use Next.js API Routes as a proxy layer, hiding the backend URL and structure from client-side code for improved security.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create server-side API utility",
+      "description": "As a developer, I need a server-side API utility to make requests to the backend from Next.js API routes.",
+      "acceptanceCriteria": [
+        "Create `/frontend/lib/server-api.ts` with fetch wrapper for server-side use",
+        "Uses `API_URL` environment variable (not NEXT_PUBLIC_)",
+        "Supports GET, POST, PUT, DELETE methods with generic TypeScript types",
+        "Accepts cookies string parameter for forwarding authentication",
+        "Handles errors consistently with proper status codes",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create Items list API route",
+      "description": "As a user, I want to browse and search items without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/items/route.ts` - proxy for listing items",
+        "Forward all query parameters (page, limit, search, min_price, max_price, min_margin, max_margin, min_buy_limit, min_volume, max_volume, members, regime, sort, order)",
+        "Forward cookies from incoming request to backend",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create Items batch API route",
+      "description": "As a user, I want to fetch multiple items by ID without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/items/batch/route.ts` - proxy for batch fetching",
+        "Forward `ids` query parameter",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create single Item API route",
+      "description": "As a user, I want to view item details without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/items/[id]/route.ts` - proxy for single item",
+        "Extract `id` from route params",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Create Suggestions API route",
+      "description": "As a user, I want to view trading suggestions without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/suggestions/route.ts` - proxy for suggestions",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Create Sync Status API route",
+      "description": "As a user, I want to see last sync timestamp without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/sync/status/route.ts` - proxy for sync status",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Create Regime Segments API route",
+      "description": "As a user, I want to view regime segments without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/regime/segments/[itemId]/route.ts` - proxy for regime segments",
+        "Extract `itemId` from route params",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Create Regime Thresholds API routes",
+      "description": "As a user, I want to view and update regime thresholds without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/regime/thresholds/route.ts` - proxy for getting thresholds",
+        "Create `PUT /app/api/regime/thresholds/route.ts` - proxy for updating thresholds",
+        "Forward request body on PUT requests",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Create Regime Calibrate API route",
+      "description": "As a user, I want to trigger auto-calibration without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `POST /app/api/regime/calibrate/route.ts` - proxy for calibration",
+        "Forward request body",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Create Regime Recalculate API route",
+      "description": "As a user, I want to trigger recalculation without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `POST /app/api/regime/recalculate/route.ts` - proxy for recalculation",
+        "Forward request body",
+        "Forward cookies from incoming request",
+        "Return same JSON structure as backend",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Create Regime Export API route",
+      "description": "As a user, I want to export regime data without exposing backend URLs.",
+      "acceptanceCriteria": [
+        "Create `GET /app/api/regime/export/[itemId]/route.ts` - proxy for export",
+        "Extract `itemId` from route params",
+        "Forward `format` query parameter (json/csv)",
+        "Handle CSV responses with correct Content-Type header and streaming",
+        "Handle JSON responses normally",
+        "Forward cookies from incoming request",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Update frontend API client",
+      "description": "As a developer, I need the frontend API client to call Next.js routes instead of the backend directly.",
+      "acceptanceCriteria": [
+        "Update `/frontend/lib/api.ts` to use relative URLs (e.g., `/api/items` instead of `${NEXT_PUBLIC_API_URL}/api/items`)",
+        "Remove `NEXT_PUBLIC_API_URL` usage from client-side code",
+        "Remove `baseUrl` export since it's no longer needed externally",
+        "Update any direct fetch calls (like CSV export in item-detail-modal.tsx) to use relative URLs",
+        "All existing hooks continue to work without modification",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Update environment configuration",
+      "description": "As a developer, I need proper environment variable setup for the new architecture.",
+      "acceptanceCriteria": [
+        "Add `API_URL` to `.env.example` with documentation comment",
+        "Remove `NEXT_PUBLIC_API_URL` from `.env.example` if present",
+        "Create/update `.env.local.example` if needed",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Verify end-to-end functionality",
+      "description": "As a user, I want all existing functionality to work exactly as before.",
+      "acceptanceCriteria": [
+        "Items list loads with pagination",
+        "Item search and filtering works",
+        "Item detail modal opens and displays data",
+        "Regime segments display correctly",
+        "Regime threshold editing works",
+        "Calibration and recalculation work",
+        "Data export (JSON/CSV) downloads correctly",
+        "Suggestions page loads",
+        "Sync status displays and polls correctly",
+        "Backend URL does not appear in browser Network tab",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

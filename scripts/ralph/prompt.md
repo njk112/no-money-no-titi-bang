@@ -20,6 +20,8 @@
 9. Commit: `feat: [ID] - [Title]`
 10. Update prd.json: `passes: true`
 11. Append learnings to progress.txt
+12. If all tasks are completed follow stop condition.
+13. If tasks any tasks remain, just end your response (next iteration will continue)
 
 ## Progress Format
 
