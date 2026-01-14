@@ -19,6 +19,7 @@ router.on('/').render('pages/home')
 
 router.get('/api/items', [ItemsController, 'index'])
 router.get('/api/items/batch', [ItemsController, 'batch'])
+router.patch('/api/items/batch-group', [ItemsController, 'batchUpdateGroup'])
 router.get('/api/items/:id', [ItemsController, 'show'])
 router.patch('/api/items/:id/group', [ItemsController, 'updateGroup'])
 router.get('/api/suggestions', [SuggestionsController, 'index'])

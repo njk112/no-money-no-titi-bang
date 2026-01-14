@@ -373,4 +373,40 @@ export default class ItemsController {
         : null,
     })
   }
+
+  async batchUpdateGroup({ request, response }: HttpContext) {
+    const { itemIds, groupId } = request.body()
+
+    // Validate itemIds is non-empty array
+    if (!Array.isArray(itemIds) || itemIds.length === 0) {
+      return response.badRequest({ message: 'itemIds must be a non-empty array' })
+    }
+
+    // Validate all itemIds are integers
+    if (!itemIds.every((id: unknown) => typeof id === 'number' && Number.isInteger(id))) {
+      return response.badRequest({ message: 'All itemIds must be integers' })
+    }
+
+    // Validate groupId is an integer
+    if (typeof groupId !== 'number' || !Number.isInteger(groupId)) {
+      return response.badRequest({ message: 'groupId must be an integer' })
+    }
+
+    // Validate groupId exists
+    const group = await ItemGroup.find(groupId)
+    if (!group) {
+      return response.badRequest({ message: 'Invalid groupId: group does not exist' })
+    }
+
+    // Update all items with the specified group
+    const now = DateTime.now().toSQL()
+    const updated = await Item.query()
+      .whereIn('id', itemIds)
+      .update({
+        group_id: groupId,
+        classified_at: now,
+      })
+
+    return response.json({ updated })
+  }
 }
