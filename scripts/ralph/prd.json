@@ -1,224 +1,270 @@
 {
   "project": "OSRS GE Dashboard",
-  "branchName": "ralph/api-obfuscation",
-  "description": "Next.js API Routes for Backend Obfuscation - Migrate all frontend API calls to use Next.js API Routes as a proxy layer, hiding the backend URL and structure from client-side code for improved security.",
+  "branchName": "ralph/multi-tenant-settings",
+  "description": "Multi-Tenant Database Architecture with User Settings & Permissioning - Move settings from localStorage to database, add tenant/user concept, implement permission tiers (Free/Basic/Pro/Enterprise) to gate premium features",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create server-side API utility",
-      "description": "As a developer, I need a server-side API utility to make requests to the backend from Next.js API routes.",
+      "title": "Create tenant database schema",
+      "description": "As a developer, I need a tenant table to store user/client records so each user has a unique identity for settings ownership.",
       "acceptanceCriteria": [
-        "Create `/frontend/lib/server-api.ts` with fetch wrapper for server-side use",
-        "Uses `API_URL` environment variable (not NEXT_PUBLIC_)",
-        "Supports GET, POST, PUT, DELETE methods with generic TypeScript types",
-        "Accepts cookies string parameter for forwarding authentication",
-        "Handles errors consistently with proper status codes",
+        "Create `tenants` table with: `id` (UUID, PK), `external_id` (nullable, for future OAuth), `provider` (nullable, e.g., 'google', 'discord'), `email` (nullable), `display_name` (nullable), `tier` (enum: 'free', 'basic', 'pro', 'enterprise', default 'free'), `last_active_at` (TIMESTAMP), `created_at`, `updated_at`",
+        "Add unique constraint on `(provider, external_id)` for OAuth users",
+        "Create Lucid model with appropriate TypeScript types",
+        "Migration runs successfully",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Create Items list API route",
-      "description": "As a user, I want to browse and search items without exposing backend URLs.",
+      "title": "Create user settings database schema",
+      "description": "As a developer, I need a user_settings table to persist favorites, blocked items, and default filters per tenant.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/items/route.ts` - proxy for listing items",
-        "Forward all query parameters (page, limit, search, min_price, max_price, min_margin, max_margin, min_buy_limit, min_volume, max_volume, members, regime, sort, order)",
-        "Forward cookies from incoming request to backend",
-        "Return same JSON structure as backend",
+        "Create `user_settings` table with: `id` (INT, PK), `tenant_id` (UUID, FK to tenants), `favorites` (JSON array of item IDs), `blocked_items` (JSON array of item IDs), `default_filters` (JSON object with minPrice, maxPrice, minMargin, minVolume, maxVolume), `show_favorites_only` (BOOLEAN, default false), `created_at`, `updated_at`",
+        "Add unique constraint on `tenant_id` (one settings row per tenant)",
+        "Add cascade delete when tenant is removed",
+        "Create Lucid model with JSON column serialization",
+        "Migration runs successfully",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Create Items batch API route",
-      "description": "As a user, I want to fetch multiple items by ID without exposing backend URLs.",
+      "title": "Create tenant-specific regime thresholds schema",
+      "description": "As a developer, I need to support per-tenant regime thresholds so each user can have their own classification settings.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/items/batch/route.ts` - proxy for batch fetching",
-        "Forward `ids` query parameter",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Create `tenant_regime_thresholds` table with: `id` (INT, PK), `tenant_id` (UUID, FK to tenants), `chop_max` (FLOAT), `range_norm_max` (FLOAT), `slope_norm_max` (FLOAT), `cross_rate_min` (FLOAT), `window_size` (INT), `created_at`, `updated_at`",
+        "Add unique constraint on `tenant_id`",
+        "Add cascade delete when tenant is removed",
+        "Keep existing `regime_thresholds` table as system defaults for new tenants",
+        "Create Lucid model",
+        "Migration runs successfully",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Create single Item API route",
-      "description": "As a user, I want to view item details without exposing backend URLs.",
+      "title": "Create permission tier definitions",
+      "description": "As a developer, I need a clear definition of what each tier can access so the application can enforce permissions consistently.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/items/[id]/route.ts` - proxy for single item",
-        "Extract `id` from route params",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Create `config/permissions.ts` defining tier capabilities: `free` (view items, filters, favorites/blocked, view regime segments), `basic` (all free features), `pro` (all basic + export + modify thresholds + calibration + recalculation), `enterprise` (all pro + reserved)",
+        "Export TypeScript types for tier names and permission checks",
+        "Create helper function `canAccess(tier: Tier, feature: Feature): boolean`",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Create Suggestions API route",
-      "description": "As a user, I want to view trading suggestions without exposing backend URLs.",
+      "title": "Implement anonymous tenant creation",
+      "description": "As a user visiting the app without signing in, I want a tenant record created automatically so my settings persist in the database.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/suggestions/route.ts` - proxy for suggestions",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Create service to generate anonymous tenant with UUID",
+        "Anonymous tenants have `provider: null`, `external_id: null`",
+        "Anonymous tenants default to 'free' tier",
+        "Set `last_active_at` to current timestamp on creation",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Create Sync Status API route",
-      "description": "As a user, I want to see last sync timestamp without exposing backend URLs.",
+      "title": "Create tenant middleware",
+      "description": "As a developer, I need middleware that attaches the current tenant to every request so controllers can access tenant context.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/sync/status/route.ts` - proxy for sync status",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Create `tenant_middleware.ts` that reads tenant UUID from `X-Tenant-ID` header",
+        "Attach tenant record to request context (e.g., `ctx.tenant`)",
+        "If no tenant found, create anonymous tenant and return ID in `X-Tenant-ID` response header",
+        "Update `last_active_at` timestamp on each request (for cleanup job)",
+        "Middleware runs on all API routes",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-007",
-      "title": "Create Regime Segments API route",
-      "description": "As a user, I want to view regime segments without exposing backend URLs.",
+      "title": "Create user settings API endpoints",
+      "description": "As a frontend developer, I need API endpoints to read and update user settings so the frontend can sync with the database.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/regime/segments/[itemId]/route.ts` - proxy for regime segments",
-        "Extract `itemId` from route params",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "`GET /api/settings` - Returns current tenant's settings (favorites, blocked_items, default_filters, show_favorites_only)",
+        "`PUT /api/settings` - Updates current tenant's settings (partial update supported)",
+        "`PUT /api/settings/favorites` - Update favorites array",
+        "`PUT /api/settings/blocked-items` - Update blocked items array",
+        "`PUT /api/settings/filters` - Update default filters",
+        "All endpoints use tenant from middleware context",
+        "Returns 200 with updated settings on success",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-008",
-      "title": "Create Regime Thresholds API routes",
-      "description": "As a user, I want to view and update regime thresholds without exposing backend URLs.",
+      "title": "Create tenant-specific regime threshold endpoints",
+      "description": "As a frontend developer, I need regime threshold endpoints that respect tenant context and permissions.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/regime/thresholds/route.ts` - proxy for getting thresholds",
-        "Create `PUT /app/api/regime/thresholds/route.ts` - proxy for updating thresholds",
-        "Forward request body on PUT requests",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Modify `GET /api/regime/thresholds` to return tenant's thresholds (fallback to global defaults if none set)",
+        "Modify `PUT /api/regime/thresholds` to update tenant's thresholds (creates row if not exists)",
+        "Add permission check: return 403 if tenant tier is 'free' or 'basic'",
+        "Include `tier` and `canModify` in response for frontend UI state",
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-009",
-      "title": "Create Regime Calibrate API route",
-      "description": "As a user, I want to trigger auto-calibration without exposing backend URLs.",
+      "title": "Add permission checks to calibration endpoint",
+      "description": "As a system, I need to restrict calibration to paid tiers so free users cannot auto-calibrate thresholds.",
       "acceptanceCriteria": [
-        "Create `POST /app/api/regime/calibrate/route.ts` - proxy for calibration",
-        "Forward request body",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Modify `POST /api/regime/calibrate` to check tenant tier",
+        "Return 403 with `{ error: 'upgrade_required', requiredTier: 'pro' }` if tier is 'free' or 'basic'",
+        "On success, save calibrated thresholds to tenant's `tenant_regime_thresholds` row",
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-010",
-      "title": "Create Regime Recalculate API route",
-      "description": "As a user, I want to trigger recalculation without exposing backend URLs.",
+      "title": "Add permission checks to recalculation endpoint",
+      "description": "As a system, I need to restrict recalculation to paid tiers so free users cannot trigger expensive recomputation.",
       "acceptanceCriteria": [
-        "Create `POST /app/api/regime/recalculate/route.ts` - proxy for recalculation",
-        "Forward request body",
-        "Forward cookies from incoming request",
-        "Return same JSON structure as backend",
+        "Modify `POST /api/regime/recalculate` to check tenant tier",
+        "Return 403 with `{ error: 'upgrade_required', requiredTier: 'pro' }` if tier is 'free' or 'basic'",
+        "Use tenant's thresholds (not global) when recalculating",
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-011",
-      "title": "Create Regime Export API route",
-      "description": "As a user, I want to export regime data without exposing backend URLs.",
+      "title": "Update frontend settings context for API sync",
+      "description": "As a user, I want my settings to sync with the database so they persist across devices and browsers.",
       "acceptanceCriteria": [
-        "Create `GET /app/api/regime/export/[itemId]/route.ts` - proxy for export",
-        "Extract `itemId` from route params",
-        "Forward `format` query parameter (json/csv)",
-        "Handle CSV responses with correct Content-Type header and streaming",
-        "Handle JSON responses normally",
-        "Forward cookies from incoming request",
-        "Typecheck passes"
+        "Modify `SettingsContext` to fetch initial settings from `GET /api/settings` on mount",
+        "Send `X-Tenant-ID` header with all API requests (from localStorage)",
+        "Store new tenant ID from response header if not already in localStorage",
+        "Update settings via API calls, with localStorage as cache",
+        "Implement optimistic updates with rollback on API failure",
+        "On API failure/offline: fall back to localStorage cache, queue changes for sync",
+        "Show subtle offline indicator when operating from cache",
+        "Sync queued changes when connection restored",
+        "Show loading state while fetching initial settings",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-012",
-      "title": "Update frontend API client",
-      "description": "As a developer, I need the frontend API client to call Next.js routes instead of the backend directly.",
+      "title": "Update settings page for permission-aware UI",
+      "description": "As a user, I want to see which features require an upgrade so I understand the value of paid tiers.",
       "acceptanceCriteria": [
-        "Update `/frontend/lib/api.ts` to use relative URLs (e.g., `/api/items` instead of `${NEXT_PUBLIC_API_URL}/api/items`)",
-        "Remove `NEXT_PUBLIC_API_URL` usage from client-side code",
-        "Remove `baseUrl` export since it's no longer needed externally",
-        "Update any direct fetch calls (like CSV export in item-detail-modal.tsx) to use relative URLs",
-        "All existing hooks continue to work without modification",
-        "Typecheck passes"
+        "Fetch tenant tier from API (add to settings or separate endpoint)",
+        "Disable regime threshold inputs if tier is 'free' or 'basic'",
+        "Disable calibrate button if tier is 'free' or 'basic'",
+        "Disable recalculate button if tier is 'free' or 'basic'",
+        "Show upgrade prompt/badge on locked features (e.g., 'Pro feature')",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-013",
-      "title": "Update environment configuration",
-      "description": "As a developer, I need proper environment variable setup for the new architecture.",
+      "title": "Create tenant info API endpoint",
+      "description": "As a frontend developer, I need an endpoint to get current tenant info including tier for UI permission checks.",
       "acceptanceCriteria": [
-        "Add `API_URL` to `.env.example` with documentation comment",
-        "Remove `NEXT_PUBLIC_API_URL` from `.env.example` if present",
-        "Create/update `.env.local.example` if needed",
+        "`GET /api/tenant` - Returns `{ id, tier, displayName, email, provider, permissions: { canModifyThresholds, canCalibrate, canRecalculate, canExport } }`",
+        "Permissions object computed from tier using permission config",
         "Typecheck passes"
       ],
       "priority": 13,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-014",
-      "title": "Verify end-to-end functionality",
-      "description": "As a user, I want all existing functionality to work exactly as before.",
+      "title": "Seed default settings for new tenants",
+      "description": "As a new user, I want sensible default settings so the app is immediately usable.",
       "acceptanceCriteria": [
-        "Items list loads with pagination",
-        "Item search and filtering works",
-        "Item detail modal opens and displays data",
-        "Regime segments display correctly",
-        "Regime threshold editing works",
-        "Calibration and recalculation work",
-        "Data export (JSON/CSV) downloads correctly",
-        "Suggestions page loads",
-        "Sync status displays and polls correctly",
-        "Backend URL does not appear in browser Network tab",
-        "Verify in browser using dev-browser skill"
+        "When creating new tenant, also create `user_settings` row with empty favorites, empty blocked_items, default filters from constants",
+        "Copy global `regime_thresholds` to `tenant_regime_thresholds` for new tenant",
+        "Use database transaction to ensure atomic creation",
+        "Typecheck passes"
       ],
       "priority": 14,
-      "passes": true,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add migration path for existing localStorage data",
+      "description": "As an existing user with localStorage settings, I want my settings migrated to the database so I don't lose my configuration.",
+      "acceptanceCriteria": [
+        "Frontend checks for existing localStorage settings on first load",
+        "If localStorage has data and API returns empty/default settings, prompt user to migrate",
+        "Provide 'Import local settings' action that POSTs localStorage data to API",
+        "Clear localStorage after successful migration (or keep as cache)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Implement anonymous tenant cleanup job",
+      "description": "As a system administrator, I want inactive anonymous tenants deleted after 30 days to keep the database tidy.",
+      "acceptanceCriteria": [
+        "Create scheduled job/command to delete anonymous tenants with no activity for 30+ days",
+        "Only delete tenants where `provider IS NULL` (anonymous)",
+        "Cascade delete removes associated user_settings and tenant_regime_thresholds",
+        "Job can be run manually via CLI command (e.g., `node ace tenants:cleanup`)",
+        "Log count of deleted tenants",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Add export permission check",
+      "description": "As a system, I need to restrict data export to Pro+ tiers.",
+      "acceptanceCriteria": [
+        "Modify `GET /api/regime/export/:itemId` to check tenant tier",
+        "Return 403 with `{ error: 'upgrade_required', requiredTier: 'pro' }` if tier is 'free' or 'basic'",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
       "notes": ""
     }
   ]
