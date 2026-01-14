@@ -1,5 +1,3 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333'
-
 export interface ApiResponse<T> {
   data: T
   meta?: {
@@ -24,9 +22,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${BASE_URL}${endpoint}`
-
-  const response = await fetch(url, {
+  const response = await fetch(endpoint, {
     ...options,
     credentials: 'include',
     headers: {
@@ -44,7 +40,6 @@ async function request<T>(
 }
 
 export const api = {
-  baseUrl: BASE_URL,
   get: <T>(endpoint: string) => request<T>(endpoint),
   post: <T>(endpoint: string, body: unknown) =>
     request<T>(endpoint, {

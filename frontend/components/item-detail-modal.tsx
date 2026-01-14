@@ -86,32 +86,16 @@ export function ItemDetailModal({ itemId, isOpen, onClose, onGroupChange }: Item
     setIsExporting(true)
     try {
       const url = `/api/regime/export/${itemId}?format=${exportFormat}`
-
-      if (exportFormat === 'csv') {
-        // For CSV, fetch as text and trigger download
-        const response = await fetch(`${api.baseUrl}${url}`)
-        const blob = await response.blob()
-        const downloadUrl = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = downloadUrl
-        a.download = `${item.name.replace(/\s+/g, '-')}-regime-${new Date().toISOString().split('T')[0]}.csv`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(downloadUrl)
-        document.body.removeChild(a)
-      } else {
-        // For JSON, fetch and trigger download
-        const data = await api.get<unknown>(url)
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-        const downloadUrl = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = downloadUrl
-        a.download = `${item.name.replace(/\s+/g, '-')}-regime-${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(downloadUrl)
-        document.body.removeChild(a)
-      }
+      const response = await fetch(url, { credentials: 'include' })
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = `${item.name.replace(/\s+/g, '-')}-regime-${new Date().toISOString().split('T')[0]}.${exportFormat}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(downloadUrl)
+      document.body.removeChild(a)
     } catch (err) {
       console.error('Export failed:', err)
     } finally {
