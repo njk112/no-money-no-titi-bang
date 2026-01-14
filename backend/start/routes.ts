@@ -13,6 +13,7 @@ const ItemsController = () => import('#controllers/items_controller')
 const SuggestionsController = () => import('#controllers/suggestions_controller')
 const SyncController = () => import('#controllers/sync_controller')
 const RegimeController = () => import('#controllers/regime_controller')
+const GroupsController = () => import('#controllers/groups_controller')
 
 router.on('/').render('pages/home')
 
@@ -27,3 +28,4 @@ router.put('/api/regime/thresholds', [RegimeController, 'updateThresholds'])
 router.post('/api/regime/recalculate', [RegimeController, 'recalculate'])
 router.get('/api/regime/export/:itemId', [RegimeController, 'export'])
 router.post('/api/regime/calibrate', [RegimeController, 'calibrate'])
+router.get('/api/groups', [GroupsController, 'index'])
