@@ -140,3 +140,197 @@
   - Test with `npm run classify -- --help` to verify script registration without running full command
 ---
 
+## 2026-01-14 - US-014
+- What was implemented: Created useGroups React hook for fetching available item groups from the API
+- Files changed: `frontend/hooks/use-groups.ts`
+- **Learnings:**
+  - Groups API returns array directly (not wrapped in `data` property like paginated endpoints)
+  - Export Group interface from hook file for reuse in components
+  - Follow same pattern as useItems hook: useState, useEffect, useCallback with fetchGroups function
+---
+
+## 2026-01-14 - US-015
+- What was implemented: Added Group and ItemGroup types to frontend/lib/types.ts, added group field to Item interface, added group/exclude_group to ItemsParams
+- Files changed: `frontend/lib/types.ts`
+- **Learnings:**
+  - Created separate ItemGroup interface (subset of Group) for Item.group field with only display-needed properties
+  - Item.group is optional with `?` since existing items may not have the field
+  - group/exclude_group params are strings (comma-separated slugs)
+---
+
+## 2026-01-14 - US-016
+- What was implemented: Updated useItems hook to pass group and exclude_group filter params to the API
+- Files changed: `frontend/hooks/use-items.ts`
+- **Learnings:**
+  - Simple query string param addition: `if (p.group) searchParams.set('group', p.group)`
+  - String params don't need `String()` conversion unlike numeric params
+---
+
+## 2026-01-14 - US-017
+- What was implemented: Added group multi-select filter with include/exclude toggle to the FilterPanel on the dashboard
+- Files changed: `frontend/app/page.tsx`, `frontend/components/ui/checkbox.tsx`, `frontend/components/ui/popover.tsx`, `frontend/package.json`
+- **Learnings:**
+  - Created Popover and Checkbox shadcn/ui components using @radix-ui/react-popover and @radix-ui/react-checkbox packages
+  - Multi-select dropdown pattern: Popover containing a scrollable list with Checkbox components for each option
+  - Group filter state: `selectedGroups: string[]` (slugs) and `groupFilterMode: 'include' | 'exclude'`
+  - Toggle pattern: Two buttons with conditional variant based on active mode (`variant={mode === 'include' ? 'default' : 'outline'}`)
+  - Selected groups shown as colored badges with X button for removal
+  - Pass group/exclude_group params conditionally based on mode: `group: mode === 'include' ? param : undefined`
+  - Include group filter state in `handleResetFilters` function for complete reset functionality
+---
+
+## 2026-01-14 - US-018
+- What was implemented: Added Group column to ItemsTable showing colored badge for each item's group
+- Files changed: `frontend/components/items-table.tsx`
+- **Learnings:**
+  - Simple column addition: add TableHead and TableCell in the appropriate positions
+  - Colored badge pattern: `<span className="inline-block px-2 py-0.5 text-xs rounded-full text-white" style={{ backgroundColor: group.color }}>`
+  - Use optional chaining to safely access `item.group?.name` and `item.group?.color`
+  - Show placeholder text (`-`) for items without a group assignment
+---
+
+## 2026-01-14 - US-019
+- What was implemented: Added group badge display to ItemDetailModal header, showing colored badge or 'Unclassified' for items without group
+- Files changed: `frontend/components/item-detail-modal.tsx`
+- **Learnings:**
+  - Place badge in header flex container alongside item name for clean layout
+  - Use gray background (`bg-gray-200 text-gray-600`) for 'Unclassified' items to distinguish from assigned groups
+  - Conditional rendering pattern: `item.group ? <colored badge> : <gray 'Unclassified' badge>`
+---
+
+## 2026-01-14 - US-020
+- What was implemented: Added group change dropdown to item detail modal with toast notifications for success/error
+- Files changed: `frontend/components/item-detail-modal.tsx`, `frontend/components/providers.tsx`, `frontend/hooks/use-item.ts`, `frontend/lib/api.ts`, `frontend/package.json`
+- **Learnings:**
+  - Install `sonner` for toast notifications: `pnpm add sonner`
+  - Add `<Toaster position="bottom-right" />` to Providers component for global toast support
+  - Add `api.patch()` method to api.ts for PATCH requests
+  - Add `refetch` function to useItem hook to refresh data after mutations
+  - Use string value for Select (convert group.id.toString()), convert back on change handler
+  - Special value 'unclassified' for null group, convert to null in API call
+---
+
+## 2026-01-14 - US-021
+- What was implemented: Created groups settings page at /settings/groups with back link and groups list
+- Files changed: `frontend/app/settings/groups/page.tsx`
+- **Learnings:**
+  - Next.js App Router: create `app/settings/groups/page.tsx` for `/settings/groups` route
+  - Use `Link` component with nested `Button` for back navigation with consistent styling
+  - Reuse existing Card components from settings page for consistent look
+  - Access `item_count` from group object (populated by backend's computed column)
+---
+
+## 2026-01-14 - US-022
+- What was implemented: Enhanced groups settings page with full table showing all required columns and Add Group button
+- Files changed: `frontend/app/settings/groups/page.tsx`, `backend/app/models/item.ts`, `backend/database/seeders/item_group_seeder.ts`
+- **Learnings:**
+  - Use Table components from shadcn/ui for consistent styling
+  - Truncate keywords using helper function: `keywords.join(', ').substring(0, maxLength) + '...'`
+  - For @belongsTo relationships with custom foreign key names, specify explicitly: `@belongsTo(() => ItemGroup, { foreignKey: 'groupId' })`
+  - SQLite stores JavaScript Date objects as Unix timestamps; use `new Date().toISOString().slice(0, 19).replace('T', ' ')` for SQL datetime format in seeders
+  - Database corruption can happen with SQLite when server holds lock during migrations; backup and recreate if integrity_check fails
+---
+
+## 2026-01-14 - US-023
+- What was implemented: Created GroupModal component for adding/editing item groups with form fields for name, description, color picker, and keywords
+- Files changed: `frontend/components/group-modal.tsx`, `frontend/app/settings/groups/page.tsx`
+- **Learnings:**
+  - Use Dialog components from shadcn/ui (@radix-ui/react-dialog) for modal dialogs
+  - Color picker pattern: preset color swatches with `<button>` elements + custom color via `<input type="color">`
+  - Reset form state in useEffect when modal opens or group prop changes
+  - Keywords stored as comma-separated text in textarea, parsed to array on submit with `.split(',').map(k => k.trim()).filter(Boolean)`
+  - For native textarea styling, apply shadcn classes manually: `rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs...`
+  - Use `aria-invalid` attribute on inputs for accessibility error states
+---
+
+## 2026-01-14 - US-024
+- What was implemented: Created POST /api/groups endpoint for creating new item groups with slug auto-generation
+- Files changed: `backend/app/controllers/groups_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Private helper method `slugify()` for kebab-case slug generation from name
+  - Use `ItemGroup.query().max('sort_order as max_sort_order').first()` to get max value from column
+  - Access aggregated value via `$extras` property: `result?.$extras.max_sort_order`
+  - Check slug uniqueness with `ItemGroup.findBy('slug', slug)` before creating
+---
+
+## 2026-01-14 - US-025
+- What was implemented: Created PUT /api/groups/:id endpoint for updating existing groups (name, description, keywords, color - slug is immutable)
+- Files changed: `backend/app/controllers/groups_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `group.save()` to persist changes after modifying model properties
+  - Get item count via raw query: `db.from('items').where('group_id', id).count('* as count').first()`
+  - Check `if (field !== undefined)` to allow null/empty values while distinguishing from omitted fields
+---
+
+## 2026-01-14 - US-026
+- What was implemented: Created DELETE /api/groups/:id endpoint with protection against deleting Unknown group and groups with assigned items
+- Files changed: `backend/app/controllers/groups_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `group.delete()` to remove a model instance from database
+  - Protect special groups by slug check: `if (group.slug === 'unknown')`
+  - Count related items to prevent deletion of groups with assigned items
+---
+
+## 2026-01-14 - US-027
+- What was implemented: Wired up GroupModal to settings page with full CRUD operations (create, edit, delete) via API calls
+- Files changed: `frontend/app/settings/groups/page.tsx`, `frontend/components/ui/alert-dialog.tsx`, `frontend/package.json`
+- **Learnings:**
+  - Create AlertDialog component using `@radix-ui/react-alert-dialog` for confirmation dialogs
+  - Use `api.post()`, `api.put()`, `api.delete()` from lib/api for API calls
+  - Import `toast` from 'sonner' for success/error notifications
+  - Conditional delete button: `{!group.is_default && <Button>Delete</Button>}` hides delete for default groups
+  - AlertDialog state pattern: `deleteDialogOpen` boolean + `groupToDelete` object to track which group to delete
+---
+
+## 2026-01-14 - US-028
+- What was implemented: Created Review Unknowns page route with basic layout and added links from main settings page
+- Files changed: `frontend/app/review-unknowns/page.tsx`, `frontend/app/settings/page.tsx`
+- **Learnings:**
+  - Create nested routes with Next.js App Router: `app/review-unknowns/page.tsx` for `/review-unknowns`
+  - Use `ChevronRight` from lucide-react for navigation link indicators
+  - Navigation link pattern: `<Link href="..." className="flex items-center justify-between p-3 rounded-lg hover:bg-muted">`
+---
+
+## 2026-01-14 - US-029
+- What was implemented: Added unknown items table to review page with icon, name, price, and suggested group columns; includes loading and empty states; client-side keyword matching for group suggestions
+- Files changed: `frontend/app/review-unknowns/page.tsx`
+- **Learnings:**
+  - Define params object as a constant outside component to prevent useEffect dependency re-runs: `const UNKNOWN_PARAMS = { group: 'unknown' } as const`
+  - Client-side keyword matching: iterate groups in sort_order, check each keyword against item name with `name.toLowerCase().includes(keyword.toLowerCase())`
+  - Exclude the "Unknown" group itself from suggestions: `.filter(g => g.slug !== 'unknown')`
+  - Conditional rendering for colored suggestion badges vs "No suggestion" text
+---
+
+## 2026-01-14 - US-030
+- What was implemented: Added batch selection and assignment functionality to review unknowns page with checkboxes, select all, selection count display, and group assignment dropdown
+- Files changed: `frontend/app/review-unknowns/page.tsx`
+- **Learnings:**
+  - Selection state with Set for O(1) lookup: `const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())`
+  - Select all pattern: `setSelectedIds(new Set(items.map(item => item.id)))` and `setSelectedIds(new Set())` for deselect
+  - Conditional UI visibility: `{selectedIds.size > 0 && <SelectionControls />}` to show selection controls only when items selected
+  - Use `Select` component with `onValueChange` to trigger assignment immediately on selection
+  - Refetch after mutation: `refetch()` from useItems hook to refresh data and remove assigned items from list
+  - Clear selection after assignment: `setSelectedIds(new Set())` to reset selection state
+---
+
+## 2026-01-14 - US-031
+- What was implemented: Created GET /api/groups/stats endpoint that returns profitability statistics per group (item count, total volume, avg margin, total max profit)
+- Files changed: `backend/app/controllers/groups_controller.ts`, `backend/start/routes.ts`
+- **Learnings:**
+  - Use `db.from().leftJoin().leftJoin()` to chain multiple joins for aggregate queries across related tables
+  - For computed averages with CASE: `db.raw('CASE WHEN ... THEN expr END')` inside `.avg()`
+  - For computed sums with min logic: use nested CASE for SQLite compatibility (no LEAST function)
+  - Raw query results accessed directly as row properties: `row.group_id`, `row.total_volume`
+  - Use `orderByRaw('column DESC NULLS LAST')` for descending sort with nulls at end
+  - Place specific routes (like `/stats`) before parameterized routes to avoid path conflicts
+---
+
+## 2026-01-14 - US-032
+- What was implemented: Created useGroupStats React hook for fetching group profitability statistics from GET /api/groups/stats
+- Files changed: `frontend/hooks/use-group-stats.ts`
+- **Learnings:**
+  - Follow same pattern as useGroups hook: useState for stats/isLoading/error, useCallback for fetch function, useEffect to fetch on mount
+  - GroupStats interface mirrors API response: group_id, group_name, group_slug, group_color, item_count, total_volume, avg_margin, total_max_profit
+  - Stats API returns array directly (not paginated)
+---
+
