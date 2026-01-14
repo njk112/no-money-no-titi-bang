@@ -135,4 +135,34 @@ export default class GroupsController {
       item_count: Number(itemCount?.count || 0),
     })
   }
+
+  async destroy({ params, response }: HttpContext) {
+    const group = await ItemGroup.find(params.id)
+    if (!group) {
+      return response.status(404).json({ error: 'Group not found' })
+    }
+
+    // Cannot delete the 'Unknown' group
+    if (group.slug === 'unknown') {
+      return response.status(400).json({ error: 'Cannot delete the Unknown group' })
+    }
+
+    // Cannot delete groups with assigned items
+    const itemCount = await db
+      .from('items')
+      .where('group_id', group.id)
+      .count('* as count')
+      .first()
+
+    const count = Number(itemCount?.count || 0)
+    if (count > 0) {
+      return response.status(400).json({
+        error: `Cannot delete group with ${count} assigned item${count === 1 ? '' : 's'}. Reassign items first.`,
+      })
+    }
+
+    await group.delete()
+
+    return response.json({ message: 'Group deleted successfully' })
+  }
 }
