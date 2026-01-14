@@ -54,7 +54,6 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
   const { groups } = useGroups()
   const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
   const { favorites, toggleFavorite, toggleBlocked } = useSettings()
-  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json')
   const [isExporting, setIsExporting] = useState(false)
   const [isSavingGroup, setIsSavingGroup] = useState(false)
@@ -187,35 +186,13 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                   />
                 </button>
                 <button
-                  onClick={() => setShowBlockConfirm(true)}
+                  onClick={() => toggleBlocked(item.id)}
                   className="p-1 hover:bg-muted rounded"
                   title="Block item"
                 >
                   <Ban className="w-5 h-5 text-muted-foreground hover:text-red-500 transition-colors" />
                 </button>
               </div>
-              {showBlockConfirm && (
-                <div className="flex items-center gap-2 mt-2 text-sm">
-                  <span className="text-muted-foreground">Block this item?</span>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      toggleBlocked(item.id)
-                      setShowBlockConfirm(false)
-                    }}
-                  >
-                    Confirm
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowBlockConfirm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
 
