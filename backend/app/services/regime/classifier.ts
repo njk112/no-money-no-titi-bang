@@ -116,8 +116,8 @@ export function classifyRegime(series: PricePoint[], opts: ClassifierOptions): W
     const label = classifyWindow(features, thresholds)
 
     results.push({
-      startIdx: series[windowStart].index,
-      endIdx: series[windowEnd].index,
+      startIdx: windowStart,  // Use array position for correct slicing
+      endIdx: windowEnd,      // Use array position for correct slicing
       startTs: series[windowStart].timestamp,
       endTs: series[windowEnd].timestamp,
       label,
