@@ -86,4 +86,53 @@ export default class GroupsController {
       item_count: 0,
     })
   }
+
+  async update({ params, request, response }: HttpContext) {
+    const group = await ItemGroup.find(params.id)
+    if (!group) {
+      return response.status(404).json({ error: 'Group not found' })
+    }
+
+    const { name, description, keywords, color } = request.body()
+
+    // Validate name if provided
+    if (name !== undefined) {
+      if (typeof name !== 'string' || name.trim() === '') {
+        return response.status(400).json({ error: 'Name cannot be empty' })
+      }
+      group.name = name.trim()
+    }
+
+    // Update other fields (slug is NOT updated - immutable after creation)
+    if (description !== undefined) {
+      group.description = description || null
+    }
+    if (keywords !== undefined) {
+      group.keywords = keywords || []
+    }
+    if (color !== undefined) {
+      group.color = color || '#6B7280'
+    }
+
+    await group.save()
+
+    // Get item count for response
+    const itemCount = await db
+      .from('items')
+      .where('group_id', group.id)
+      .count('* as count')
+      .first()
+
+    return response.json({
+      id: group.id,
+      name: group.name,
+      slug: group.slug,
+      description: group.description,
+      keywords: group.keywords,
+      color: group.color,
+      sort_order: group.sortOrder,
+      is_default: group.isDefault,
+      item_count: Number(itemCount?.count || 0),
+    })
+  }
 }
