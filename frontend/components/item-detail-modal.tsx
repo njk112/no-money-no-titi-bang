@@ -27,6 +27,7 @@ interface ItemDetailModalProps {
   itemId: number | null
   isOpen: boolean
   onClose: () => void
+  onGroupChange?: () => void
 }
 
 function formatNumber(num: number | null): string {
@@ -49,7 +50,7 @@ function formatRelativeTime(isoString: string | null): string {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
 }
 
-export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProps) {
+export function ItemDetailModal({ itemId, isOpen, onClose, onGroupChange }: ItemDetailModalProps) {
   const { item, isLoading, error, refetch } = useItem(isOpen ? itemId : null)
   const { groups } = useGroups()
   const { segments, isLoading: isLoadingRegime } = useRegimeSegments(isOpen ? itemId : null)
@@ -70,6 +71,7 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
       })
       toast.success('Group updated successfully')
       refetch()
+      onGroupChange?.()
     } catch (err) {
       toast.error('Failed to update group')
       console.error('Failed to update group:', err)
