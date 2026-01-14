@@ -11,7 +11,7 @@ export default class ItemsSyncService {
 
   async syncItems(): Promise<number> {
     const mapping = await this.wikiClient.fetchMapping()
-    const now = new Date().toISOString()
+    const now = new Date().toISOString().replace('T', ' ').replace('Z', '').slice(0, 19)
 
     const records = mapping.map((item) => ({
       id: item.id,

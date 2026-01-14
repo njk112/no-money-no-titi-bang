@@ -179,22 +179,20 @@ export default class GroupsController {
       .select('item_groups.color as group_color')
       .count('items.id as item_count')
       .sum('item_prices.volume as total_volume')
-      .avg(
+      .select(
         db.raw(
-          'CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL ' +
-            'THEN item_prices.high_price - item_prices.low_price END'
+          'AVG(CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL ' +
+            'THEN item_prices.high_price - item_prices.low_price END) as avg_margin'
         )
       )
-      .as('avg_margin')
-      .sum(
+      .select(
         db.raw(
-          'CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL AND items.buy_limit IS NOT NULL ' +
+          'SUM(CASE WHEN item_prices.high_price IS NOT NULL AND item_prices.low_price IS NOT NULL AND items.buy_limit IS NOT NULL ' +
             'THEN (item_prices.high_price - item_prices.low_price) * ' +
             'CASE WHEN items.buy_limit < COALESCE(item_prices.volume, 0) THEN items.buy_limit ELSE COALESCE(item_prices.volume, 0) END ' +
-            'END'
+            'END) as total_max_profit'
         )
       )
-      .as('total_max_profit')
       .groupBy('item_groups.id')
       .orderByRaw('total_max_profit DESC NULLS LAST')
 

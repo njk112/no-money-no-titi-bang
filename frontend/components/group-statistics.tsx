@@ -89,18 +89,16 @@ export function GroupStatistics({ onGroupClick, pollInterval = 60000 }: GroupSta
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: stat.group_color }}
                     />
-                    <span className="text-sm flex-1 truncate">{stat.group_name}</span>
-                    <span className="text-xs text-muted-foreground w-10 text-right">{stat.item_count}</span>
-                    <span className="text-xs text-muted-foreground w-16 text-right">{formatNumber(stat.avg_margin)}</span>
-                    <span className="text-xs font-medium w-16 text-right">{formatNumber(stat.total_max_profit)}</span>
+                    <span className="text-sm flex-1 min-w-0 truncate">{stat.group_name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{stat.item_count}</span>
+                    <span className="text-xs font-medium shrink-0 w-14 text-right">{formatNumber(stat.total_max_profit)}</span>
                   </button>
                 ))}
                 <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground border-t mt-2 pt-2">
                   <div className="w-3 h-3" />
                   <span className="flex-1">Group</span>
-                  <span className="w-10 text-right">Items</span>
-                  <span className="w-16 text-right">Avg Margin</span>
-                  <span className="w-16 text-right">Max Profit</span>
+                  <span className="shrink-0">Items</span>
+                  <span className="w-14 text-right">Max Profit</span>
                 </div>
               </div>
             )}
