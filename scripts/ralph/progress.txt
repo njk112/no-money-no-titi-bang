@@ -132,3 +132,11 @@
   - Command is idempotent by re-processing all items on each run
 ---
 
+## 2026-01-14 - US-013
+- What was implemented: Added classify npm script to package.json for convenient classification command access
+- Files changed: `backend/package.json`
+- **Learnings:**
+  - Simple npm script addition: `"classify": "node ace items:classify"`
+  - Test with `npm run classify -- --help` to verify script registration without running full command
+---
+
