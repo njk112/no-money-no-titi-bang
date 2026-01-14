@@ -138,6 +138,18 @@ export function ItemDetailModal({ itemId, isOpen, onClose }: ItemDetailModalProp
                     <span className="text-xs text-yellow-600 font-medium px-1.5 py-0.5 bg-yellow-100 rounded">P2P</span>
                   )}
                 </h2>
+                {item.group ? (
+                  <span
+                    className="px-2 py-0.5 text-xs rounded-full text-white"
+                    style={{ backgroundColor: item.group.color }}
+                  >
+                    {item.group.name}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-600">
+                    Unclassified
+                  </span>
+                )}
                 <button
                   onClick={() => toggleFavorite(item.id)}
                   className="p-1 hover:bg-muted rounded"
